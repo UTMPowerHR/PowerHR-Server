@@ -5,33 +5,48 @@
 # Container Scanning customization: https://docs.gitlab.com/ee/user/application_security/container_scanning/#customizing-the-container-scanning-settings
 # Note that environment variables can be set in several places
 # See https://docs.gitlab.com/ee/ci/variables/#cicd-variable-precedence
-
 stages:
-    - build
-    - security
-    - test
-    - push
-    - deploy
+  - build
+  - test
+  - push
+  - deploy
 
 variables:
-    DOCKER_IMAGE: $CI_REGISTRY_IMAGE
+  DOCKER_IMAGE: $CI_REGISTRY_IMAGE
+  SONAR_USER_HOME: "${CI_PROJECT_DIR}/.sonar"
+  GIT_DEPTH: "0"
 
 build:
-    stage: build
-    image: docker:latest
-    services:
-        - docker:dind
-    script:
-        - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
-        - docker build -t $DOCKER_IMAGE .
-        - docker push $DOCKER_IMAGE
-    rules:
+  stage: build
+  image: docker:latest
+  services:
+    - docker:dind
+  script:
+    - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
+    - docker build -t $DOCKER_IMAGE .
+    - docker push $DOCKER_IMAGE
+  rules:
     - if: '$CI_PIPELINE_SOURCE != "schedule" && $CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE != "schedule"'
 
 sast:
-    stage: security
+  stage: test
 include:
-    - template: Security/SAST.gitlab-ci.yml
+  - template: Security/SAST.gitlab-ci.yml
+
+sonarcloud-check:
+  stage: test
+  image:
+    name: sonarsource/sonar-scanner-cli:latest
+    entrypoint: [""]
+  cache:
+    key: "${CI_JOB_NAME}"
+    paths:
+      - .sonar/cache
+  script:
+    - sonar-scanner
+  rules:
+    - if: '$CI_PIPELINE_SOURCE != "schedule"'
 
 lint_check:
     stage: test
@@ -45,6 +60,7 @@ lint_check:
         - docker run --rm -v $(pwd)/report:/app/report $DOCKER_IMAGE npm run lint
     rules:
     - if: '$CI_PIPELINE_SOURCE != "schedule" && $CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE != "schedule"'
 
 format_check:
     stage: test
@@ -58,6 +74,7 @@ format_check:
         - docker run --rm -v $(pwd)/report:/app/report $DOCKER_IMAGE npm run prettier:check
     rules:
     - if: '$CI_PIPELINE_SOURCE != "schedule" && $CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE != "schedule"'
 
 unit_test:
     stage: test
@@ -77,24 +94,25 @@ unit_test:
         when: always
     rules:
     - if: '$CI_PIPELINE_SOURCE != "schedule" && $CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE != "schedule"'
 
 jmeter_test:
-    stage: test
-    image: docker:latest
-    services:
-        - docker:dind
-    script:
-        - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
-        - docker pull $DOCKER_IMAGE
-        - mkdir -p jmeter/results jmeter/dashboard
-        - docker run --rm -v $(pwd)/jmeter:/jmeter -w /app --add-host=host.docker.internal:host-gateway $DOCKER_IMAGE sh -c "jmeter -n -t /jmeter/Powerhr-server.jmx -l /jmeter/results/result.csv -e -o /jmeter/dashboard"
-    artifacts:
-        paths:
-            - jmeter/results/result.csv
-            - jmeter/dashboard/
-        when: always
-    rules:
-    - if: '$CI_PIPELINE_SOURCE == "schedule" && $CI_PIPELINE_SOURCE == "merge_request_event"'
+  stage: test
+  image: docker:latest
+  services:
+    - docker:dind
+  script:
+    - echo $CI_REGISTRY_PASSWORD | docker login -u $CI_REGISTRY_USER --password-stdin $CI_REGISTRY
+    - docker pull $DOCKER_IMAGE
+    - mkdir -p jmeter/results jmeter/dashboard
+    - docker run --rm -v $(pwd)/jmeter:/jmeter -w /app --add-host=host.docker.internal:host-gateway $DOCKER_IMAGE sh -c "jmeter -n -t /jmeter/Powerhr-server.jmx -l /jmeter/results/result.csv -e -o /jmeter/dashboard"
+  artifacts:
+    paths:
+      - jmeter/results/result.csv
+      - jmeter/dashboard/
+    when: always
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "schedule"'
 
 push_to_dockerhub:
     stage: push
@@ -114,7 +132,7 @@ push_to_dockerhub:
         - echo "Pushing image to Docker Hub"
         - docker push iymjalil/powerhr-server:latest
     rules:
-    - if: '$CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE != "schedule" && $CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE != "schedule"'
 
 deploy_to_render:
     stage: deploy
@@ -122,5 +140,8 @@ deploy_to_render:
     script:
         - echo "Triggering deployment on Render"
         - curl -X POST https://api.render.com/deploy/srv-cq0jcvqju9rs73au43a0?key=WwpMoEGGmuc
+    environment:
+      name: production
+      url: https://powerhr-server.onrender.com
     rules:
-    - if: '$CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE != "schedule" && $CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE != "schedule"'
