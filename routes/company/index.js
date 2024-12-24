@@ -188,6 +188,25 @@ class CompanyRoutes {
             },
             this.getCompanyTurnover.bind(this),
         );
+
+        this.fastify.put(
+            '/:companyId/employees/:employeeId/convert',
+            {
+                schema: {
+                    description: 'Convert an employee to an applicant',
+                    tags: ['Company'],
+                    params: {
+                        type: 'object',
+                        properties: {
+                            companyId: { type: 'string' },
+                            employeeId: { type: 'string' },
+                        },
+                        required: ['companyId', 'employeeId'],
+                    },
+                },
+            },
+            this.convertEmployeeToApplicant.bind(this),
+        );
     }
 
     async registerCompany(request, reply) {
@@ -393,6 +412,34 @@ class CompanyRoutes {
             const turnover = await this.enterpriseFacade.getTurnOver(companyId, from, to);
 
             reply.send({ turnover });
+        } catch (error) {
+            if (error instanceof ApiError) {
+                return reply.status(error.statusCode).send({ error: error.message });
+            } else {
+                request.log.error(error);
+                reply.status(500).send({ error: error.message || 'Something went wrong' });
+            }
+        }
+    }
+
+    async convertEmployeeToApplicant(request, reply) {
+        try {
+            const { companyId, employeeId } = request.params;
+
+            // Call the EnterpriseFacade to handle the conversion
+            const applicant = await this.enterpriseFacade.convertEmployeeToApplicant(companyId, employeeId);
+
+            await this.enterpriseFacade.logAction(
+                request.user.id,
+                companyId,
+                'Employee converted to applicant',
+                `Employee ${employeeId} converted to applicant`,
+            );
+
+            reply.send({
+                applicant,
+                message: 'Employee converted to applicant successfully',
+            });
         } catch (error) {
             if (error instanceof ApiError) {
                 return reply.status(error.statusCode).send({ error: error.message });

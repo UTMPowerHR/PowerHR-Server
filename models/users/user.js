@@ -53,8 +53,9 @@ userSchema.methods.getPublicProfile = function () {
 
 userSchema.pre('save', async function (next) {
     const salt = await bcrypt.genSalt(10);
-    const hash = await bcrypt.hash(this.password, salt);
-    this.password = hash;
+    if (!this.password.startsWith('$2b$')) {
+        this.password = await bcrypt.hash(this.password, salt);
+    }
 
     //email is lowercase
     this.email = this.email.toLowerCase();
