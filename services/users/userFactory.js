@@ -279,6 +279,51 @@ class UserFactory {
 
         return this.getMe(id);
     }
+
+    /**
+     * Converts a user (e.g., an employee) to another type (e.g., applicant)
+     * @param {string} currentType - The current user type (e.g., 'employee')
+     * @param {string} userId - The user ID to be converted
+     * @param {object} args - Any additional arguments needed for conversion
+     * @returns {object} - The newly created user of the target type
+     */
+    async convert(role, userId) {
+        let user;
+        let newUser;
+        role = role.toLowerCase();
+
+        if (role === 'employee') {
+            // Step 1: Find the user based on the current type
+            user = await Employee.findById(userId);
+            if (!user) {
+                throw new ApiError(404, 'Employee not found');
+            }
+
+            // Step 2: Prepare the data for the applicant
+            const applicantData = {
+                _id: user._id, // Retain the same _id
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                password: user.password, // Ensure the hashed password is retained
+                gender: user.gender,
+                // Add additional fields if necessary
+            };
+
+            // Step 3: Delete the employee record
+            await Employee.findByIdAndDelete(userId); // Delete or update as per your logic
+
+            // Step 4: Create a new applicant while retaining the same _id
+            newUser = await Applicant.create(applicantData);
+        } else {
+            throw new ApiError(400, `Unsupported user type: ${role}`);
+        }
+
+        // Step 5: Return the newly created applicant
+        return newUser;
+    }
+
+
 }
 
 export default UserFactory;
