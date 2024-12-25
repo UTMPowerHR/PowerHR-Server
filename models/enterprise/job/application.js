@@ -13,6 +13,10 @@ const applicationSchema = mongoose.Schema({
         required: true,
     },
 
+    resume: {
+        type: String
+    },
+
     status: {
         statusType: {
             type: String,

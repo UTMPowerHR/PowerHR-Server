@@ -2,6 +2,7 @@ import Applicant from '../../models/users/applicant.js';
 import Employee from '../../models/users/employee.js';
 import User from '../../models/users/user.js';
 import SysAdmin from '../../models/users/sysadmin.js';
+import JobController from '../enterprise/job/jobController.js';
 import ApiError from '../../util/ApiError.js';
 import ResumeController from '../resume/resumeController.js';
 import EmploymentHistory from '../../models/users/employmentHistory.js';
@@ -290,6 +291,7 @@ class UserFactory {
      */
     async convert(role, userId) {
         let user;
+        let applications;
         let newUser;
         role = role.toLowerCase();
 
@@ -299,7 +301,12 @@ class UserFactory {
             if (!user) {
                 throw new ApiError(404, 'Employee not found');
             }
-            console.log(user);
+
+
+            const jobController = new JobController();
+            applications = await jobController.getApplicationsByApplicant(userId);
+            const application = applications[0];
+
             // Step 2: Prepare the data for the applicant
 
             // const employmentHistory = new EmploymentHistory({
@@ -345,6 +352,7 @@ class UserFactory {
                 email: user.email,
                 password: user.password, // Ensure the hashed password is retained
                 gender: user.gender,
+                resume: application.resume,
                 // Add additional fields if necessary
             };
 
