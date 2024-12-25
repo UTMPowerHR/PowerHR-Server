@@ -358,6 +358,12 @@ class JobController {
                         path: 'company',
                     },
                 },
+            })
+            .populate({
+                path: 'applicant',
+                populate: {
+                    path: 'resume', // Populate resume from the Applicant schema
+                },
             });
 
         return applications;
