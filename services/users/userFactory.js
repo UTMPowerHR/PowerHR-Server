@@ -5,6 +5,7 @@ import SysAdmin from '../../models/users/sysadmin.js';
 import JobController from '../enterprise/job/jobController.js';
 import ApiError from '../../util/ApiError.js';
 import ResumeController from '../resume/resumeController.js';
+import EmploymentHistory from '../../models/users/employmentHistory.js';
 
 class UserFactory {
     /**
@@ -301,11 +302,49 @@ class UserFactory {
                 throw new ApiError(404, 'Employee not found');
             }
 
+
             const jobController = new JobController();
             applications = await jobController.getApplicationsByApplicant(userId);
             const application = applications[0];
 
             // Step 2: Prepare the data for the applicant
+
+            // const employmentHistory = new EmploymentHistory({
+            //     _id: user._id,
+            //     company: user.company,
+            //     department: user.department,
+            //     jobTitle: user.jobTitle,
+            //     hireDate: user.hireDate,
+            //     personalEmail: user.personalEmail,
+            //     salary: user.salary,
+            //     terminationDate: user.terminationDate,
+            //     address: user.address,
+            //     phone: user.phone,
+            //     profilePicture: user.profilePicture,
+            // });
+
+            // await employmentHistory.save();
+
+            const employmentHistory = {
+                _id: user._id,
+                company: user.company,
+                department: user.department,
+                jobTitle: user.jobTitle,
+                hireDate: user.hireDate,
+                personalEmail: user.personalEmail,
+                salary: user.salary,
+                terminationDate: user.terminationDate,
+                address: user.address,
+                phone: user.phone,
+                profilePicture: user.profilePicture,
+            }
+            console.log(employmentHistory);
+            const employmentHistoryData = new EmploymentHistory(employmentHistory);
+
+            // await EmploymentHistory.create(employmentHistoryData);
+
+            await employmentHistoryData.save();
+
             const applicantData = {
                 _id: user._id, // Retain the same _id
                 firstName: user.firstName,
@@ -329,8 +368,6 @@ class UserFactory {
         // Step 5: Return the newly created applicant
         return newUser;
     }
-
-
 }
 
 export default UserFactory;

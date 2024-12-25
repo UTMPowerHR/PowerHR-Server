@@ -207,6 +207,17 @@ class CompanyRoutes {
             },
             this.convertEmployeeToApplicant.bind(this),
         );
+
+        this.fastify.get(
+            '/employmenthistory',
+            {
+                schema: {
+                    description: 'Get employees of a company',
+                    tags: ['Company'],
+                },
+            },
+            this.getEmploymentHistory.bind(this),
+        );
     }
 
     async registerCompany(request, reply) {
@@ -428,7 +439,7 @@ class CompanyRoutes {
 
             // Call the EnterpriseFacade to handle the conversion
             const applicant = await this.enterpriseFacade.convertEmployeeToApplicant(companyId, employeeId);
-
+            console.log(request.body);
             await this.enterpriseFacade.logAction(
                 request.user.id,
                 companyId,
@@ -447,6 +458,15 @@ class CompanyRoutes {
                 request.log.error(error);
                 reply.status(500).send({ error: error.message || 'Something went wrong' });
             }
+        }
+    }
+    async getEmploymentHistory(request, reply){
+        try{
+            const employmentHistory = await this.enterpriseFacade.getEmploymentHistory();
+            return reply.send(employmentHistory);
+        } catch(error){
+            request.log.error(error);
+            reply.status(500).send({ error: error.message || 'Something went wrong' });
         }
     }
 }
