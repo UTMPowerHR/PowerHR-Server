@@ -30,7 +30,7 @@ class DocumentRoutes {
                 }
             },
             this.uploadDocument.bind(this)
-        );                
+        );
 
         // Get all documents
         this.fastify.get(
@@ -126,6 +126,25 @@ class DocumentRoutes {
             },
             this.deleteDocument.bind(this)
         );
+
+        // Get document by ID
+        this.fastify.get(
+            '/download/:id',
+            {
+                schema: {
+                    description: 'Download document by ID from DB',
+                    tags: ['Documents'],
+                    params: {
+                        type: 'object',
+                        properties: {
+                            id: { type: 'string' }
+                        },
+                        required: ['id']
+                    }
+                }
+            },
+            this.downloadDocument.bind(this)
+        );
     }
 
     async uploadDocument(request, reply) {
@@ -137,21 +156,21 @@ class DocumentRoutes {
             if (!file) {
                 return reply.code(400).send({ error: 'No file uploaded' });
             }
-    
+
             // Validate uploader and department fields
             if (!uploader || !department) {
                 return reply.code(400).send({ error: 'Uploader and department are required' });
             }
-    
+
             // Extract the actual values from the field objects
             const uploaderValue = uploader.value; // Extract value from uploader field
             const departmentValue = department.value; // Extract value from department field
             const notesValue = notes.value || ''; // Extract value from notes field (or use empty string if not provided)
-    
+
             // Access the file stream and convert it to buffer
             const fileBuffer = await file.toBuffer();  // Access the file stream correctly
             const fileSize = (fileBuffer.length / 1024).toFixed(2) + 'KB';
-    
+
             // Prepare the document data
             const document = {
                 name: file.filename,  // Use the filename directly
@@ -163,17 +182,17 @@ class DocumentRoutes {
                 fileData: fileBuffer,
                 date: new Date()
             };
-    
+
             // Call the controller to save the document
             const savedDoc = await this.documentController.createDocument(document);
-    
+
             // Respond with the saved document
             return reply.code(201).send(savedDoc);
         } catch (error) {
             request.log.error(error);
             return reply.code(error.statusCode || 500).send({ error: error.message || 'Failed to upload document' });
         }
-    }       
+    }
 
     async getAllDocuments(request, reply) {
         try {
@@ -184,7 +203,7 @@ class DocumentRoutes {
             return reply.code(500).send({ error: 'Failed to fetch documents' });
         }
     }
-    
+
     async getDocumentsByDepartment(request, reply) {
         try {
             const { department } = request.params;
@@ -232,8 +251,24 @@ class DocumentRoutes {
             return reply.code(500).send({ error: 'Failed to delete document' });
         }
     }
+
+    async downloadDocument(request, reply) {
+        try {
+            const { id } = request.params;
+            const document = await this.documentController.downloadDocument(id);
+            
+            reply.header('Content-Type', document.fileType);
+            reply.header('Content-Disposition', `attachment; filename="${document.fileName}"`);
+            
+            return reply.send(document.fileData);
+        } catch (error) {
+            request.log.error(error);
+            return reply.code(error.statusCode || 500)
+                .send({ error: error.message || 'Failed to download document' });
+        }
+    }
 }
 
-export default async function(fastify) {
+export default async function (fastify) {
     new DocumentRoutes(fastify);
 }
