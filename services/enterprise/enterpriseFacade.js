@@ -202,6 +202,11 @@ class EnterpriseFacade {
     async getTurnOver(companyId, startDate, endDate) {
         return await this.companyController.getTurnOver(companyId, startDate, endDate);
     }
+
+    async getEmploymentHistory(){
+    
+        return await this.companyController.getEmploymentHistory();
+    }
 }
 
 export default EnterpriseFacade;

@@ -320,6 +320,9 @@ class UserFactory {
 
             const employmentHistory = {
                 _id: user._id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
                 company: user.company,
                 department: user.department,
                 jobTitle: user.jobTitle,
