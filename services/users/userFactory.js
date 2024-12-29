@@ -314,6 +314,7 @@ class UserFactory {
                 // Create a new Employee document using the Employee model
                 await Employee.create({
                     _id: applicant._id, // Preserve the same ID
+                    profilePicture: applicant.profilePicture,
                     firstName: applicant.firstName,
                     lastName: applicant.lastName,
                     email: applicant.email,
