@@ -83,8 +83,8 @@ class AuthController {
 
         const authentication = await Authentication.findOne({ user: user._id });
 
-        if (user?.terminationDate && dayjs(user.terminationDate).isBefore(dayjs().subtract(1, 'day'))) {
-            throw new ApiError(401, 'Account deleted');
+        if (user?.terminationDate && dayjs(user.terminationDate).isBefore(dayjs())) {
+            await this.userFactory.convert(user.__t, user._id);
         }
 
         if (!authentication.active) {
