@@ -9,12 +9,12 @@ const applicationSchema = mongoose.Schema({
 
     applicant: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Applicant',
+        ref: 'User',
         required: true,
     },
 
     resume: {
-        type: String
+        type: String,
     },
 
     status: {
