@@ -353,6 +353,7 @@ class UserFactory {
                 password: user.password, // Ensure the hashed password is retained
                 gender: user.gender,
                 resume: application.resume,
+                profilePicture: user.profilePicture,
                 // Add additional fields if necessary
             };
 

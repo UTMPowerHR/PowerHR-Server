@@ -81,7 +81,7 @@ class EnterpriseFacade {
         return await this.userFactory.update('employee', employeeId, args);
     }
 
-    async convertEmployeeToApplicant(companyId, employeeId) {
+    async convertEmployeeToApplicant(employeeId) {
         return await this.userFactory.convert('employee', employeeId);
     }
 
