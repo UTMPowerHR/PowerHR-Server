@@ -81,6 +81,10 @@ class EnterpriseFacade {
         return await this.userFactory.update('employee', employeeId, args);
     }
 
+    async convertEmployeeToApplicant(employeeId) {
+        return await this.userFactory.convert('employee', employeeId);
+    }
+
     // Form
     async createForm(createdBy, company, name, description) {
         return await this.formController.createForm(createdBy, company, name, description);

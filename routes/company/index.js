@@ -188,6 +188,36 @@ class CompanyRoutes {
             },
             this.getCompanyTurnover.bind(this),
         );
+
+        this.fastify.put(
+            '/:companyId/employees/:employeeId/convert',
+            {
+                schema: {
+                    description: 'Convert an employee to an applicant',
+                    tags: ['Company'],
+                    params: {
+                        type: 'object',
+                        properties: {
+                            companyId: { type: 'string' },
+                            employeeId: { type: 'string' },
+                        },
+                        required: ['companyId', 'employeeId'],
+                    },
+                },
+            },
+            this.convertEmployeeToApplicant.bind(this),
+        );
+
+        this.fastify.get(
+            '/employmenthistory',
+            {
+                schema: {
+                    description: 'Get employees of a company',
+                    tags: ['Company'],
+                },
+            },
+            this.getEmploymentHistory.bind(this),
+        );
     }
 
     async registerCompany(request, reply) {
@@ -400,6 +430,43 @@ class CompanyRoutes {
                 request.log.error(error);
                 reply.status(500).send({ error: error.message || 'Something went wrong' });
             }
+        }
+    }
+
+    async convertEmployeeToApplicant(request, reply) {
+        try {
+            const { companyId, employeeId } = request.params;
+
+            // Call the EnterpriseFacade to handle the conversion
+            const applicant = await this.enterpriseFacade.convertEmployeeToApplicant(employeeId);
+            console.log(request.body);
+            await this.enterpriseFacade.logAction(
+                request.user.id,
+                companyId,
+                'Employee converted to applicant',
+                `Employee ${employeeId} converted to applicant`,
+            );
+
+            reply.send({
+                applicant,
+                message: 'Employee converted to applicant successfully',
+            });
+        } catch (error) {
+            if (error instanceof ApiError) {
+                return reply.status(error.statusCode).send({ error: error.message });
+            } else {
+                request.log.error(error);
+                reply.status(500).send({ error: error.message || 'Something went wrong' });
+            }
+        }
+    }
+    async getEmploymentHistory(request, reply){
+        try{
+            const employmentHistory = await this.enterpriseFacade.getEmploymentHistory();
+            return reply.send(employmentHistory);
+        } catch(error){
+            request.log.error(error);
+            reply.status(500).send({ error: error.message || 'Something went wrong' });
         }
     }
 }
