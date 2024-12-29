@@ -438,7 +438,7 @@ class CompanyRoutes {
             const { companyId, employeeId } = request.params;
 
             // Call the EnterpriseFacade to handle the conversion
-            const applicant = await this.enterpriseFacade.convertEmployeeToApplicant(companyId, employeeId);
+            const applicant = await this.enterpriseFacade.convertEmployeeToApplicant(employeeId);
             console.log(request.body);
             await this.enterpriseFacade.logAction(
                 request.user.id,

@@ -5,6 +5,7 @@ import SysAdmin from '../../models/users/sysadmin.js';
 import JobController from '../enterprise/job/jobController.js';
 import ApiError from '../../util/ApiError.js';
 import ResumeController from '../resume/resumeController.js';
+import Application from '../../models/enterprise/job/application.js';
 import EmploymentHistory from '../../models/users/employmentHistory.js';
 
 class UserFactory {
@@ -262,10 +263,75 @@ class UserFactory {
      */
 
     async update(role, id, args) {
+        console.log('Update called with:', { role, id, args });
+
         switch (role) {
             case 'applicant':
+            // If statusType is 'Accepted', change role to Employee
+            if (args.statusType === 'Accepted') {
+                console.log('Status is Accepted for ID:', id);
+
+                const applicant = await Applicant.findById(id).populate('appliedJobs'); ;
+                 if (!applicant) {
+                    console.log('Applicant not found');
+                    throw new ApiError(404, 'Applicant not found');
+                }
+
+                console.log('Applicant data:', applicant);
+
+                // Fetch the most recent job posting or specific job
+                const application = await Application
+                .findOne({ applicant: id })
+                .populate({
+                    path: 'posting',
+                    populate: { path: 'job', select: 'company title' } // Populate job reference
+                });
+
+                if (!application) {
+                    throw new ApiError(404, 'Application details not found');
+                }
+
+                const { posting } = application;
+                console.log('Application details:', application);
+                console.log('Posting details:', posting);
+
+                // Safely access company and job title using optional chaining
+                const company = posting?.job?.company || null; // Safe access to company
+                const jobTitle = posting?.job?.title || 'Employee'; // Safe access to job title
+                const salary = posting?.salaryRange?.min;
+
+                console.log('Company:', company);
+                console.log('Job Title:', jobTitle);
+
+                // Update the existing application to add resume
+                await Application.findByIdAndUpdate(application._id, {
+                    resume: applicant.resume  // Update resume only
+                });
+                
+                // Delete the original Applicant document
+                await Applicant.deleteOne({ _id: id });
+
+                // Create a new Employee document using the Employee model
+                await Employee.create({
+                    _id: applicant._id, // Preserve the same ID
+                    profilePicture: applicant.profilePicture,
+                    firstName: applicant.firstName,
+                    lastName: applicant.lastName,
+                    email: applicant.email,
+                    password: applicant.password, // Preserve hashed password
+                    gender: applicant.gender,
+                    company: company,
+                    personalEmail: args.personalEmail || applicant.email,
+                    jobTitle: jobTitle,
+                    salary: salary || 0,
+                    hireDate: new Date(),
+                });
+
+                console.log('Role successfully updated to Employee');
+            } else {
                 await Applicant.findByIdAndUpdate(id, args);
-                break;
+            }
+            break;
             case 'employee':
                 await Employee.findByIdAndUpdate(id, args);
                 break;
@@ -356,6 +422,7 @@ class UserFactory {
                 password: user.password, // Ensure the hashed password is retained
                 gender: user.gender,
                 resume: application.resume,
+                profilePicture: user.profilePicture,
                 // Add additional fields if necessary
             };
 

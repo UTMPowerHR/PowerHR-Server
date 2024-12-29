@@ -52,9 +52,10 @@ userSchema.methods.getPublicProfile = function () {
 };
 
 userSchema.pre('save', async function (next) {
-    const salt = await bcrypt.genSalt(10);
-    if (!this.password.startsWith('$2b$')) {
-        this.password = await bcrypt.hash(this.password, salt);
+    if (this.isModified('password') && !this.password.startsWith('$2b$')) {
+        const salt = await bcrypt.genSalt(10);
+        const hash = await bcrypt.hash(this.password, salt);
+        this.password = hash;
     }
 
     //email is lowercase
@@ -67,9 +68,11 @@ userSchema.pre('save', async function (next) {
 });
 
 userSchema.pre('create', async function (next) {
-    const salt = await bcrypt.genSalt(10);
-    const hash = bcrypt.hash(this.password, salt);
-    this.password = hash;
+    if (this.isModified('password') && !this.password.startsWith('$2b$')) {
+        const salt = await bcrypt.genSalt(10);
+        const hash = bcrypt.hash(this.password, salt);
+        this.password = hash;
+    }
 
     //email is lowercase
     this.email = this.email.toLowerCase();
