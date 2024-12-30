@@ -1,5 +1,6 @@
 import ApiError from '../../util/ApiError.js';
 import EnterpriseFacade from '../../services/enterprise/enterpriseFacade.js';
+import EmploymentHistory from '../../models/users/employmentHistory.js';
 
 class CompanyRoutes {
     constructor(fastify) {
@@ -462,8 +463,13 @@ class CompanyRoutes {
     }
     async getEmploymentHistory(request, reply){
         try{
-            const employmentHistory = await this.enterpriseFacade.getEmploymentHistory();
-            return reply.send(employmentHistory);
+            // const employmentHistory = await this.enterpriseFacade.getEmploymentHistory();
+            const employmentHistories = await EmploymentHistory.find()
+            .populate('_id') // Select specific fields from the User collection
+            .populate('department')
+            .exec();
+            
+            return reply.send(employmentHistories);
         } catch(error){
             request.log.error(error);
             reply.status(500).send({ error: error.message || 'Something went wrong' });
