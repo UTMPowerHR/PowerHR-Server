@@ -263,6 +263,8 @@ class UserFactory {
      */
 
     async update(role, id, args) {
+        console.log('Update called with:', { role, id, args });
+
         switch (role) {
             case 'applicant':
             // If statusType is 'Accepted', change role to Employee
@@ -312,6 +314,7 @@ class UserFactory {
                 // Create a new Employee document using the Employee model
                 await Employee.create({
                     _id: applicant._id, // Preserve the same ID
+                    profilePicture: applicant.profilePicture,
                     firstName: applicant.firstName,
                     lastName: applicant.lastName,
                     email: applicant.email,
@@ -419,6 +422,7 @@ class UserFactory {
                 password: user.password, // Ensure the hashed password is retained
                 gender: user.gender,
                 resume: application.resume,
+                profilePicture: user.profilePicture,
                 // Add additional fields if necessary
             };
 

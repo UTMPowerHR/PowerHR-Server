@@ -14,7 +14,7 @@ const applicationSchema = mongoose.Schema({
     },
 
     resume: {
-        type: String
+        type: String,
     },
 
     status: {
