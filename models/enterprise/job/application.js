@@ -20,7 +20,7 @@ const applicationSchema = mongoose.Schema({
     status: {
         statusType: {
             type: String,
-            enum: ['New', 'Viewed', 'Interviewed', 'Rejected', 'Accepted', 'Withdrawn', 'Other', 'Closed', 'Deleted'],
+            enum: ['New', 'Viewed', 'Interviewed', 'Rejected', 'Accepted', 'Withdrawn', 'Other', 'Closed', 'Deleted', 'Pending'],
             default: 'New',
         },
         reason: {
@@ -90,6 +90,11 @@ const applicationSchema = mongoose.Schema({
                 type: Date,
             },
         },
+    },
+
+    reportDutyDate: {
+        type: Date,
+        required: false,  // Make it optional if it's only set for "Pending" status
     },
 });
 

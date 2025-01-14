@@ -78,7 +78,7 @@ class EnterpriseFacade {
     }
 
     async updateEmployee(employeeId, args) {
-        return await this.userFactory.update('employee', employeeId, args);
+        return await this.userFactory.update(args.__t.toLowerCase(), employeeId, args);
     }
 
     async convertEmployeeToApplicant(employeeId) {
