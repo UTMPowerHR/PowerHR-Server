@@ -45,7 +45,7 @@ class DocumentController {
     }
 
     async updateDocument(id, updateData) {
-        const allowedUpdates = ['notes', 'department'];
+        const allowedUpdates = ['name', 'notes', 'department'];
         const updates = Object.keys(updateData)
             .filter(key => allowedUpdates.includes(key))
             .reduce((obj, key) => {
