@@ -312,7 +312,9 @@ class JobRoutes {
         try {
             const { applicationId } = request.params;
             const status = request.body;
+            console.log(status);
             const updatedApplication = await this.enterpriseFacade.updateApplication(applicationId, status);
+            console.log(updatedApplication);
             reply.status(200).send({ message: 'Success update application', application: updatedApplication });
         } catch (error) {
             if (error instanceof ApiError) {

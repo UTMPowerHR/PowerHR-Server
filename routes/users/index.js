@@ -1,11 +1,14 @@
 import UserFactory from '../../services/users/userFactory.js';
 import ApiError from '../../util/ApiError.js';
 import Firebase from '../../util/Firebase.js';
+import CompanyController from '../../services/enterprise/company/companyController.js';
+
 
 class UserRoutes {
     constructor(fastify) {
         this.fastify = fastify;
         this.userFactory = new UserFactory();
+        this.companyController = new CompanyController();
         this.initRoutes();
     }
 

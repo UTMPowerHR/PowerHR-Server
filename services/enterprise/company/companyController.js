@@ -7,6 +7,7 @@ import EmployeeCollection from '../employee/employeeCollection.js';
 import EmployeeIterator from '../employee/employeeIterator.js';
 import dayjs from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween.js';
+import EmploymentHistory from '../../../models/users/employmentHistory.js';
 dayjs.extend(isBetween);
 
 class CompanyController {
@@ -233,7 +234,7 @@ class CompanyController {
             totalEmployeesEnd,
         };
     }
-
+  
     //Employee Iterator part
     async getEmployeeCollection(companyId) {
         return await EmployeeCollection.createCollection(companyId);
@@ -285,6 +286,11 @@ class CompanyController {
         }
         
         return employees;
+
+    async getEmploymentHistory(){
+        const employmentHistory = await EmploymentHistory.find({});
+
+        return employmentHistory;
     }
 }
 
