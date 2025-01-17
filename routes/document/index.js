@@ -233,7 +233,9 @@ class DocumentRoutes {
         try {
             const { id } = request.params;
             const update = request.body;
+            console.log(update);
             const document = await this.documentController.updateDocument(id, update);
+            console.log(document);
             return reply.send(document);
         } catch (error) {
             request.log.error(error);

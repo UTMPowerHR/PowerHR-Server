@@ -45,26 +45,33 @@ class DocumentController {
     }
 
     async updateDocument(id, updateData) {
-        const allowedUpdates = ['notes', 'department'];
+        const allowedUpdates = ['notes', 'department', 'name'];
         const updates = Object.keys(updateData)
             .filter(key => allowedUpdates.includes(key))
             .reduce((obj, key) => {
                 obj[key] = updateData[key];
                 return obj;
             }, {});
-
-        const document = await Document.findByIdAndUpdate(
-            id,
-            updates,
-            { new: true, runValidators: true }
-        ).select('-fileData');
-
-        if (!document) {
-            throw new ApiError(404, 'Document not found');
+    
+        console.log('Filtered Updates:', updates);
+    
+        try {
+            const document = await Document.findByIdAndUpdate(
+                id,
+                { $set: updates }, 
+                { new: true, runValidators: true } 
+            ).select('-fileData');
+    
+            if (!document) {
+                throw new ApiError(404, 'Document not found');
+            }
+    
+            return document;
+        } catch (error) {
+            console.error('Error updating document:', error);
+            throw error; // Re-throw the error to handle it elsewhere
         }
-
-        return document;
-    }
+    }    
 
     async deleteDocument(id) {
         const document = await Document.findByIdAndDelete(id);
