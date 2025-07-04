@@ -173,6 +173,86 @@ class JobRoutes {
             },
             this.updateApplication.bind(this),
         );
+        this.fastify.post(
+            '/applications/filter/:postingId',
+            {
+                schema: {
+                    description: 'Filter job applications by posting ID and requirements',
+                    tags: ['Job'],
+                    params: {
+                        type: 'object',
+                        properties: {
+                            postingId: { type: 'string' },
+                        },
+                        required: ['postingId'],
+                    },
+                    body: {
+                        type: 'object',
+                        properties: {
+                            requirements: {
+                                type: 'object',
+                                properties: {
+                                    qualification: { type: 'string' },
+                                    experience: {
+                                        type: 'object',
+                                        properties: {
+                                            min: { type: 'number' },
+                                            max: { type: 'number' },
+                                        },
+                                        required: ['min', 'max'],
+                                    },
+                                    languages: { type: 'array', items: { type: 'string' } },
+                                    technicalSkills: { type: 'array', items: { type: 'string' } },
+                                    softSkills: { type: 'array', items: { type: 'string' } },
+                                    gender: { type: 'string' },
+                                    rejectedApplications: { type: 'array', items: { type: 'string' } },
+                                    date: {
+                                        type: 'object',
+                                        properties: {
+                                            year: { type: 'number' },
+                                            month: { type: 'number' },
+                                        },
+                                    },
+                                },
+                                required: [],
+                            },
+                        },
+                        required: ['requirements'],
+                    },
+                },
+            },
+            this.filterApplications.bind(this),
+        );
+
+        // NEW ROUTE: Schedule Interview
+        this.fastify.post(
+            '/applications/:applicationId/schedule-interview',
+            {
+                schema: {
+                    description: 'Schedule an interview for an application',
+                    tags: ['Job'],
+                    params: {
+                        type: 'object',
+                        properties: {
+                            applicationId: { type: 'string' },
+                        },
+                        required: ['applicationId'],
+                    },
+                    body: {
+                        type: 'object',
+                        properties: {
+                            interviewType: { type: 'string', enum: ['online', 'physical'] },
+                            interviewDate: { type: 'string' },
+                            address: { type: 'string' },
+                            meetLink: { type: 'string' },
+                            additionalNotes: { type: 'string' },
+                        },
+                        required: ['interviewType', 'interviewDate'],
+                    },
+                },
+            },
+            this.scheduleInterview.bind(this),
+        );
     }
 
     async createPosting(request, reply) {
@@ -314,6 +394,56 @@ class JobRoutes {
             const status = request.body;
             const updatedApplication = await this.enterpriseFacade.updateApplication(applicationId, status);
             reply.status(200).send({ message: 'Success update application', application: updatedApplication });
+        } catch (error) {
+            if (error instanceof ApiError) {
+                return reply.status(error.statusCode).send({ error: error.message });
+            } else {
+                request.log.error(error);
+                reply.status(500).send({ error: error.message || 'Something went wrong' });
+            }
+        }
+    }
+    async filterApplications(request, reply) {
+        try {
+            const { postingId } = request.params;
+            const { requirements } = request.body;
+            console.log('requirements', requirements);
+            console.log('postingId', postingId);
+            // Validate postingId
+            if (!postingId || postingId.trim() === '') {
+                throw new ApiError(400, 'Invalid or missing postingId');
+            }
+
+            // Call the controller method
+            const result = await this.enterpriseFacade.filterApplications(postingId, requirements);
+            reply.status(200).send(result);
+        } catch (error) {
+            if (error instanceof ApiError) {
+                return reply.status(error.statusCode).send({ error: error.message });
+            } else {
+                request.log.error(error);
+                reply.status(500).send({ error: 'Internal Server Error' });
+            }
+        }
+    }
+
+    // NEW METHOD: Schedule Interview
+    async scheduleInterview(request, reply) {
+        try {
+            const { applicationId } = request.params;
+            const interviewData = request.body;
+            const scheduledBy = request.user?.id || null;
+
+            const application = await this.enterpriseFacade.scheduleInterview(
+                applicationId,
+                interviewData,
+                scheduledBy,
+            );
+
+            reply.status(200).send({
+                message: 'Interview scheduled successfully',
+                application: { _id: application._id },
+            });
         } catch (error) {
             if (error instanceof ApiError) {
                 return reply.status(error.statusCode).send({ error: error.message });

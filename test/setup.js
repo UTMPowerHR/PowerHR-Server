@@ -2,11 +2,21 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import fastify from 'fastify';
+import ajvFormats from 'ajv-formats';
 import { afterAll, beforeAll, afterEach } from 'vitest';
 
 dotenv.config({ path: './test/.env.test' });
 
-const app = fastify();
+const app = fastify({
+    ajv: {
+        plugins: [
+            // Add support for additional formats like 'binary'
+            (ajv) => {
+                ajvFormats(ajv, ['binary']);
+            },
+        ],
+    },
+});
 // Register the routes from your Fastify application
 app.register(import('../app.js'));
 

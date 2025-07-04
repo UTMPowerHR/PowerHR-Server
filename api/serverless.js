@@ -1,7 +1,16 @@
 import fastify from 'fastify';
+import ajvFormats from 'ajv-formats';
 
 const app = fastify({
     logger: true,
+    ajv: {
+        plugins: [
+            // Add support for additional formats like 'binary'
+            (ajv) => {
+                ajvFormats(ajv, ['binary']);
+            },
+        ],
+    },
 });
 
 app.get('/test', function (request, reply) {

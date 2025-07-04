@@ -9,8 +9,13 @@ const applicationSchema = mongoose.Schema({
 
     applicant: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Applicant',
+        ref: 'User',
         required: true,
+    },
+
+    resume: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Resume',
     },
 
     status: {
@@ -68,6 +73,19 @@ const applicationSchema = mongoose.Schema({
                 state: String,
                 zip: String,
                 country: String,
+            },
+
+            // NEW ADDITIONS FOR INTERVIEW SCHEDULING
+            additionalNotes: String,
+
+            scheduledBy: {
+                type: mongoose.Schema.Types.ObjectId,
+                ref: 'User',
+            },
+
+            scheduledAt: {
+                type: Date,
+                default: Date.now,
             },
         },
     ],
