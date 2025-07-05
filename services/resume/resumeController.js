@@ -1032,10 +1032,11 @@ class ResumeController {
      */
     transformApiResponse(apiData) {
         const data = apiData.data || {};
-
+        // console.table(data);
         const basicDetail = this.extractBasicDetails(data);
         const summary = { value: this.extractSummary(data) };
-        const objective = { value: this.extractObjective(data.rawText || '') };
+        const objective = { value: this.extractObjective(data || '') };
+        if (summary == objective) objective.value = '';
         const education = { value: this.extractEducation(data) };
         const experience = { value: this.extractExperience(data) };
 
@@ -1062,6 +1063,7 @@ class ResumeController {
      * Extract basic details from API data
      */
     extractBasicDetails(data) {
+        //console.log('hehe', data.candidateName, 'HAISS', data.website, 'LAURO', data.workExperience);
         const basicDetail = {
             name: '',
             title: '',
@@ -1090,6 +1092,10 @@ class ResumeController {
             basicDetail.email = data.email[0].raw || '';
         }
 
+        if (data.title && Array.isArray(data.title) && data.title.length > 0) {
+            basicDetail.title = data.title[0].raw || '';
+        }
+
         if (data.phoneNumber && Array.isArray(data.phoneNumber) && data.phoneNumber.length > 0) {
             basicDetail.phone = data.phoneNumber[0].raw || '';
         }
@@ -1098,7 +1104,7 @@ class ResumeController {
             basicDetail.location = data.location.raw || data.location.value || '';
         }
 
-        if (data.website && Array.isArray(data.website)) {
+        if (data.website || Array.isArray(data.website)) {
             data.website.forEach((site) => {
                 const url = site.raw || '';
                 if (url.includes('linkedin')) {
@@ -1115,7 +1121,7 @@ class ResumeController {
     }
 
     /**
-     * Extract education from API data
+     * Extract education data from API response with dynamic date parsing
      */
     extractEducation(data) {
         const educationList = [];
@@ -1123,31 +1129,45 @@ class ResumeController {
             data.education.forEach((eduEntry) => {
                 let institution = '';
                 let degree = '';
-                let startDate = '';
-                let endDate = '';
+                let description = [''];
 
+                // Parse institution and degree from raw or parsed fields
                 if (eduEntry.parsed) {
                     institution = eduEntry.parsed.educationOrganization?.raw || '';
                     degree = eduEntry.parsed.educationAccreditation?.raw || '';
+
+                    // Handle description (if available)
+                    if (eduEntry.parsed.description?.raw) {
+                        description = [eduEntry.parsed.description.raw];
+                    } else if (typeof eduEntry.parsed.description === 'string') {
+                        description = [eduEntry.parsed.description];
+                    }
                 }
 
-                if (eduEntry.startDate) {
-                    startDate = this.formatDate(eduEntry.startDate);
+                // Try to extract dates from different formats
+                let dateRaw = '';
+                if (eduEntry.startDate && eduEntry.endDate) {
+                    dateRaw = `${this.formatDate(eduEntry.startDate)} – ${this.formatDate(eduEntry.endDate)}`;
+                } else if (eduEntry.startDate) {
+                    dateRaw = this.formatDate(eduEntry.startDate);
+                } else if (eduEntry.endDate) {
+                    dateRaw = `– ${this.formatDate(eduEntry.endDate)}`;
+                } else if (eduEntry.parsed?.educationDates?.raw) {
+                    dateRaw = eduEntry.parsed.educationDates.raw;
                 }
 
-                if (eduEntry.endDate) {
-                    endDate = this.formatDate(eduEntry.endDate);
-                }
+                // Use shared utility to parse date range
+                const { start, end } = this.parseDynamicDateRange(dateRaw);
 
                 if (institution || degree) {
                     educationList.push({
                         institution,
                         degree,
                         date: {
-                            from: startDate,
-                            to: endDate || 'Present',
+                            from: start,
+                            to: end || 'Present',
                         },
-                        description: [''],
+                        description,
                     });
                 }
             });
@@ -1156,7 +1176,7 @@ class ResumeController {
     }
 
     /**
-     * Extract work experience from API data
+     * Extract work experience from API data with dynamic date parsing
      */
     extractExperience(data) {
         const experienceList = [];
@@ -1172,21 +1192,31 @@ class ResumeController {
                 if (workEntry.parsed) {
                     company = workEntry.parsed.workExperienceOrganization?.raw || '';
                     jobTitle = workEntry.parsed.workExperienceJobTitle?.raw || '';
+                    location = workEntry.parsed.workExperienceLocation.raw;
+                    descriptions =
+                        workEntry.parsed.workExperienceDescription.raw ||
+                        workEntry.parsed.workExperienceDescription.value ||
+                        '';
                     const dateRaw = workEntry.parsed.workExperienceDates?.raw || '';
                     if (dateRaw) {
-                        const [start, end] = dateRaw.split('–').map((d) => d.trim());
+                        const { start, end } = this.parseDynamicDateRange(dateRaw);
                         startDate = start;
-                        endDate = end || 'Present';
+                        endDate = end;
                     }
                 }
 
-                if (workEntry.location?.raw) {
-                    location = workEntry.location.raw;
+                if (workEntry.parsed?.workExperienceLocation?.raw) {
+                    location = workEntry.parsed.workExperienceLocation.raw;
                 }
 
-                if (workEntry.jobDescription && Array.isArray(workEntry.jobDescription)) {
-                    descriptions = workEntry.jobDescription.map((desc) => desc.raw || desc).filter((desc) => desc);
-                }
+                // if (
+                //     workEntry.parsed?.workExperienceDescription &&
+                //     Array.isArray(workEntry.parsed.workExperienceDescription)
+                // ) {
+                //     descriptions = workEntry.parsed.workExperienceDescription
+                //         .map((desc) => desc.raw || desc)
+                //         .filter((desc) => desc);
+                // }
 
                 if (company || jobTitle) {
                     experienceList.push({
@@ -1243,11 +1273,11 @@ class ResumeController {
                         if (!softSkills.find((s) => s.name.toLowerCase() === skillText.toLowerCase())) {
                             softSkills.push({ name: skillText, level: skillLevel });
                         }
-                    } else {
-                        if (!softSkills.find((s) => s.name.toLowerCase() === skillText.toLowerCase())) {
-                            softSkills.push({ name: skillText, level: skillLevel });
-                        }
-                    }
+                    } // else {
+                    //     if (!softSkills.find((s) => s.name.toLowerCase() === skillText.toLowerCase())) {
+                    //         softSkills.push({ name: skillText, level: skillLevel });
+                    //     }
+                    // }
                 }
             });
         }
@@ -1256,7 +1286,7 @@ class ResumeController {
     }
 
     /**
-     * Extract languages from API data
+     * Extract languages from API data with correct name and proficiency
      */
     extractLanguages(data) {
         const languagesList = [];
@@ -1265,6 +1295,7 @@ class ResumeController {
                 let languageText = '';
                 let proficiencyLevel = 'Intermediate';
 
+                // Extract raw text or parsed fields
                 if (langItem.raw) {
                     languageText = langItem.raw;
                 } else if (langItem.value) {
@@ -1283,19 +1314,29 @@ class ResumeController {
                 }
 
                 languageText = languageText.trim();
+
                 if (languageText) {
-                    const parts = languageText.split(/[-:,()]/);
+                    // Split by common separators like space, colon, comma, etc.
+                    const parts = languageText.split(/[\s:,\-$()]+/);
                     let language = parts[0].trim();
-                    if (parts.length > 1) {
-                        const potentialProficiency = parts[1].trim();
+
+                    // Try to find proficiency in remaining parts
+                    for (let i = 1; i < parts.length; i++) {
+                        const potentialProficiency = parts[i].trim();
                         if (potentialProficiency) {
-                            proficiencyLevel = this.mapLanguageProficiency(potentialProficiency);
+                            const mappedLevel = this.mapLanguageProficiency(potentialProficiency);
+                            if (mappedLevel !== 'Intermediate') {
+                                proficiencyLevel = mappedLevel;
+                                break; // Stop at first valid proficiency found
+                            }
                         }
                     }
 
                     language = this.cleanLanguageName(language);
+
                     if (language && language.length > 1) {
-                        if (!languagesList.find((l) => l.name.toLowerCase() === language.toLowerCase())) {
+                        // Avoid duplicates
+                        if (!languagesList.some((l) => l.name.toLowerCase() === language.toLowerCase())) {
                             languagesList.push({
                                 name: language,
                                 level: proficiencyLevel,
@@ -1309,46 +1350,123 @@ class ResumeController {
     }
 
     /**
-     * Extract summary from data
+     * Extract summary from data, avoiding duplicates and noise
      */
     extractSummary(data) {
+        const seen = new Set();
+        const summaries = [];
+
+        // Helper: Normalize text for comparison
+        const normalizeText = (text) =>
+            text
+                .toLowerCase()
+                .replace(/[^\w\s]/g, '')
+                .trim();
+
         if (data.summary) {
-            return data.summary.parsed || data.summary.raw || '';
+            const structuredSummary = data.summary.parsed || data.summary.raw;
+            if (structuredSummary) {
+                const normalized = normalizeText(structuredSummary);
+                if (!seen.has(normalized)) {
+                    seen.add(normalized);
+                    summaries.push(structuredSummary.trim());
+                }
+            }
         }
-        return 'Please add your professional summary here';
+
+        if (data.rawText) {
+            const paragraphs = data.rawText.split('\n').filter((line) => line.trim().length > 0);
+            for (const paragraph of paragraphs) {
+                const trimmed = paragraph.trim();
+
+                // Skip noisy lines
+                if (/^(professional working|proficiency|elementary|native|advanced)/i.test(trimmed)) continue;
+
+                const normalized = normalizeText(trimmed);
+
+                if (!seen.has(normalized) && this.isSummaryLike(trimmed)) {
+                    seen.add(normalized);
+                    summaries.push(trimmed);
+                }
+            }
+        }
+
+        // Join and return cleaned result
+        return summaries.length > 0 ? summaries.join(' ') : 'Please add your professional summary here';
+    }
+
+    /**
+     * Helper: Check if a paragraph sounds like a summary
+     */
+    isSummaryLike(text) {
+        const summaryKeywords = [
+            'summary',
+            'profile',
+            'career',
+            'professional',
+            'experienced',
+            'seeking',
+            'looking',
+            'goal',
+            'leverage',
+            'contributing',
+            'dedicated',
+        ];
+        const lower = text.toLowerCase();
+        return summaryKeywords.some((keyword) => lower.includes(keyword));
     }
 
     /**
      * Extract objective from raw text
      */
-    extractObjective(rawText) {
-        const objectiveKeywords = [
-            'objective',
-            'career goal',
-            'professional goal',
-            'looking to',
-            'seeking',
-            'aiming to',
-            'focused on',
-        ];
-
-        const paragraphs = rawText.split('\n').filter((line) => line.trim().length > 0);
-
-        for (const paragraph of paragraphs) {
-            const lowerCaseParagraph = paragraph.toLowerCase();
-            if (objectiveKeywords.some((keyword) => lowerCaseParagraph.includes(keyword))) {
-                return paragraph.trim();
+    /**
+     * Extract objective from structured data or raw text
+     */
+    extractObjective(data) {
+        // First, try using structured objective data
+        if (data.objective && typeof data.objective === 'object') {
+            // Try parsed field first
+            if (data.objective.parsed && typeof data.objective.parsed === 'string' && data.objective.parsed.trim()) {
+                return data.objective.parsed.trim();
+            }
+            if (data.objective.raw && typeof data.objective.raw === 'string' && data.objective.raw.trim()) {
+                return data.objective.raw.trim();
             }
         }
 
+        // If no structured objective found, fallback to parsing raw text
+        const rawText = data.rawText || '';
+        if (typeof rawText === 'string' && rawText.trim()) {
+            const objectiveKeywords = [
+                'objective',
+                'career goal',
+                'professional goal',
+                'looking to',
+                'seeking',
+                'aiming to',
+                'focused on',
+            ];
+
+            // Split into paragraphs
+            const paragraphs = rawText.split(/\r?\n/).filter((line) => line.trim().length > 0);
+
+            for (const paragraph of paragraphs) {
+                const lowerCaseParagraph = paragraph.toLowerCase();
+                if (objectiveKeywords.some((keyword) => lowerCaseParagraph.includes(keyword))) {
+                    return paragraph.trim();
+                }
+            }
+        }
+
+        // Default fallback
         return 'Seeking opportunities to leverage my skills and contribute to innovative projects.';
     }
 
     /**
-     * Check if a skill is technical
+     * Check if a skill is a technical skill and return normalized name if matched
      */
     isTechnicalSkill(skillName) {
-        const technicalKeywords = [
+        const technicalKeywords = new Set([
             'javascript',
             'python',
             'java',
@@ -1363,25 +1481,121 @@ class ResumeController {
             'git',
             'html',
             'css',
-            // Add more keywords as needed
-        ];
-        return technicalKeywords.some((keyword) => skillName.toLowerCase().includes(keyword));
+            'typescript',
+            'kubernetes',
+            'graphql',
+            'rest',
+            'api',
+            'express',
+            'django',
+            'flask',
+            'spring',
+            'php',
+            'ruby',
+            '.net',
+            'mysql',
+            'postgresql',
+            'mongodb',
+            'firebase',
+            'terraform',
+            'linux',
+            'bash',
+            'powershell',
+            'agile',
+            'webpack',
+            'npm',
+            'yarn',
+            'sass',
+            'redux',
+            'mobx',
+            'jest',
+            'mocha',
+            'selenium',
+            'fastify',
+            'jira',
+            'docker',
+            'jenkins',
+            'ci/cd',
+            'microservices',
+            'serverless',
+            'bootstrap',
+            'jquery',
+            'rxjs',
+            'ngrx',
+            'ngrx/store',
+            'apollo',
+            'socket.io',
+            'microsoft 365',
+            'tableau',
+        ]);
+
+        const skillLower = skillName.trim().toLowerCase();
+        for (const keyword of technicalKeywords) {
+            const regex = new RegExp(`\\b${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+            if (regex.test(skillLower)) {
+                // Return properly capitalized name
+                return skillLower
+                    .split(' ')
+                    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                    .join(' ');
+            }
+        }
+        return null;
     }
 
     /**
-     * Check if a skill is a soft skill
+     * Check if a skill is a soft skill and return normalized name if matched
      */
     isSoftSkill(skillName) {
-        const softSkillKeywords = [
+        const softSkillKeywords = new Set([
             'communication',
             'teamwork',
             'leadership',
-            'problem solving',
+            'problem-solving',
             'critical thinking',
             'adaptability',
-            // Add more keywords as needed
-        ];
-        return softSkillKeywords.some((keyword) => skillName.toLowerCase().includes(keyword));
+            'creativity',
+            'collaboration',
+            'time management',
+            'conflict resolution',
+            'negotiation',
+            'emotional intelligence',
+            'decision making',
+            'organization',
+            'project management',
+            'planning',
+            'attention to detail',
+            'multitasking',
+            'initiative',
+            'work ethic',
+            'delegation',
+            'persuasion',
+            'influence',
+            'resilience',
+            'flexibility',
+            'interpersonal skills',
+            'active listening',
+            'feedback',
+            'self-motivation',
+            'goal setting',
+            'prioritization',
+            'analytical thinking',
+            'strategic planning',
+            'resourcefulness',
+            'presentation skills',
+        ]);
+
+        const skillLower = skillName.trim().toLowerCase();
+        for (const keyword of softSkillKeywords) {
+            const regex = new RegExp(`\\b${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+            if (regex.test(skillLower)) {
+                return skillLower
+                    .split(' ')
+                    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+                    .join(' ');
+            }
+        }
+        return null;
     }
 
     /**
@@ -1413,6 +1627,88 @@ class ResumeController {
     cleanLanguageName(languageName) {
         if (!languageName) return '';
         return languageName.replace(/^(language|lang|speaking|fluency)/i, '').trim();
+    }
+
+    /**
+     * Normalize a date string to a standard format (e.g., "Jan 2020", "Feb 2025")
+     */
+    normalizeDateString(dateStr) {
+        if (!dateStr || dateStr.trim() === '') return '';
+
+        dateStr = dateStr.trim();
+
+        // Match MM/YYYY (e.g., 02/2025)
+        const slashFormat = /^(\d{1,2})\/(\d{4})$/;
+        if (slashFormat.test(dateStr)) {
+            const [, month, year] = dateStr.match(slashFormat);
+            const monthName = new Date(`${year}-${month}-01`).toLocaleString('default', { month: 'short' });
+            return `${monthName} ${year}`;
+        }
+
+        // Match Month YYYY (e.g., "May 2018")
+        const monthYearFormat = /^(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\s+\d{4}$/i;
+        if (monthYearFormat.test(dateStr)) {
+            const month = dateStr.slice(0, 3).toLowerCase();
+            const capitalizedMonth = month.charAt(0).toUpperCase() + month.slice(1);
+            const year = dateStr.slice(3).trim();
+            return `${capitalizedMonth} ${year}`;
+        }
+
+        // Match full date (e.g., "January 2020")
+        const fullMonthFormat =
+            /^(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{4}$/i;
+        if (fullMonthFormat.test(dateStr)) {
+            const [month, year] = dateStr.split(' ');
+            const monthAbbr = new Date(`${month} 1, 2020`).toLocaleString('default', { month: 'short' });
+            return `${monthAbbr} ${year}`;
+        }
+
+        // If already formatted (e.g., "Jun 2020"), leave as is
+        const knownFormat = /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4}$/;
+        if (knownFormat.test(dateStr)) {
+            return dateStr;
+        }
+
+        // Fallback: Return original if no match found
+        return dateStr;
+    }
+
+    /**
+     * Parse a date range string into normalized start and end dates.
+     * Handles formats like:
+     * - "May 2018 to July 2024"
+     * - "02/2025 - Present"
+     * - "May 2019 – June 2020"
+     */
+    parseDynamicDateRange(dateString) {
+        // Normalize whitespace and remove extra spaces
+        dateString = dateString.trim().replace(/\s+/g, ' ');
+
+        // Try common separators
+        let parts = [];
+        if (dateString.includes(' to ')) {
+            parts = dateString.split(' to ').map((d) => d.trim());
+        } else if (dateString.includes('–')) {
+            parts = dateString.split('–').map((d) => d.trim());
+        } else if (dateString.includes('-')) {
+            parts = dateString.split('-').map((d) => d.trim());
+        } else {
+            return { start: '', end: '' };
+        }
+
+        if (parts.length < 1) return { start: '', end: '' };
+
+        let start = parts[0];
+        let end = parts[1] || '';
+
+        // Normalize month/year format (e.g., "02/2025" → "Feb 2025")
+        start = this.normalizeDateString(start);
+        end = this.normalizeDateString(end);
+
+        return {
+            start,
+            end: end ? end : 'Present',
+        };
     }
 
     /**

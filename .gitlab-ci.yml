@@ -128,9 +128,9 @@ push_to_dockerhub:
         - echo "Logging in to Docker Hub"
         - echo $DOCKER_HUB_PASSWORD | docker login -u $DOCKER_HUB_USERNAME --password-stdin
         - echo "Tagging image for Docker Hub"
-        - docker tag $DOCKER_IMAGE iymjalil/powerhr-server:latest
+        - docker tag $DOCKER_IMAGE kagines/PowerHR-Server:latest
         - echo "Pushing image to Docker Hub"
-        - docker push iymjalil/powerhr-server:latest
+        - docker push kagines/PowerHR-Server:latest
     rules:
     - if: '$CI_COMMIT_BRANCH == "main" && $CI_PIPELINE_SOURCE != "schedule"'
 
