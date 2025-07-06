@@ -103,102 +103,133 @@ class ResumeController {
         if (!section || !section.value) return '';
         const { typeCard } = sectionConfig;
         let content = '';
+
         switch (typeCard) {
             case 'string':
                 content = `<div class="section-content">${section.value || ''}</div>`;
                 break;
+
             case 'point':
                 if (Array.isArray(section.value)) {
                     content = `
-                        <div class="section-content">
-                            <ul class="point-list">
-                                ${section.value.map((point) => `<li>${point}</li>`).join('')}
-                            </ul>
-                        </div>
-                    `;
+                    <div class="section-content">
+                        <ul class="point-list">
+                            ${section.value.map((point) => `<li>${point}</li>`).join('')}
+                        </ul>
+                    </div>
+                `;
                 }
                 break;
+
             case 'list':
                 if (Array.isArray(section.value)) {
+                    // Handle both simple arrays and objects with name/level properties
+                    const items = section.value
+                        .map((item) => {
+                            if (typeof item === 'string') {
+                                return item;
+                            } else if (item && item.name) {
+                                return item.name; // Extract just the name, ignore level
+                            }
+                            return '';
+                        })
+                        .filter((item) => item); // Remove empty items
+
                     content = `
-                        <div class="section-content">
-                            <div class="skill-list">
-                                ${section.value.map((item) => `<span class="skill-item">${item}</span>`).join('')}
-                            </div>
+                    <div class="section-content">
+                        <div class="skill-list">
+                            ${items.map((item) => `<span class="skill-item">${item}</span>`).join('')}
                         </div>
-                    `;
+                    </div>
+                `;
                 }
                 break;
+
             case 'score':
                 if (Array.isArray(section.value)) {
+                    // Handle both simple arrays and objects with name/level properties
+                    const items = section.value
+                        .map((item) => {
+                            if (typeof item === 'string') {
+                                return { name: item, level: 'Intermediate' }; // Default level
+                            } else if (item && item.name) {
+                                return { name: item.name, level: item.level || 'Intermediate' };
+                            }
+                            return null;
+                        })
+                        .filter((item) => item);
+
                     content = `
-                        <div class="section-content">
-                            ${section.value
-                                .map(
-                                    (item) => `
-                                <div class="score-item">
-                                    <span class="score-name">${item.name || ''}</span>
-                                    <div class="score-bar">
-                                        <div class="score-fill" style="width: ${this.getScorePercentage(item.level)}%"></div>
-                                    </div>
+                    <div class="section-content">
+                        ${items
+                            .map(
+                                (item) => `
+                            <div class="score-item">
+                                <span class="score-name">${item.name || ''}</span>
+                                <div class="score-bar">
+                                    <div class="score-fill" style="width: ${this.getScorePercentage(item.level)}%"></div>
                                 </div>
-                            `,
-                                )
-                                .join('')}
-                        </div>
-                    `;
+                            </div>
+                        `,
+                            )
+                            .join('')}
+                    </div>
+                `;
                 }
                 break;
+
             case 'timeline':
                 if (Array.isArray(section.value)) {
                     content = `
-                        <div class="section-content">
-                            ${section.value
-                                .map(
-                                    (item) => `
-                                <div class="timeline-item">
-                                    <div class="timeline-header">
-                                        <h4>${item.company || item.institution || ''}</h4>
-                                        <span class="timeline-date">${this.formatDate(item.date)}</span>
-                                    </div>
-                                    <div class="timeline-title">${item.title || item.degree || ''}</div>
-                                    ${item.location ? `<div class="timeline-location">${item.location}</div>` : ''}
-                                    ${
-                                        item.description && Array.isArray(item.description)
-                                            ? `
-                                        <ul class="timeline-description">
-                                            ${item.description.map((desc) => `<li>${desc}</li>`).join('')}
-                                        </ul>
-                                    `
-                                            : ''
-                                    }
+                    <div class="section-content">
+                        ${section.value
+                            .map(
+                                (item) => `
+                            <div class="timeline-item">
+                                <div class="timeline-header">
+                                    <h4>${item.company || item.institution || ''}</h4>
+                                    <span class="timeline-date">${this.formatDate(item.date)}</span>
                                 </div>
-                            `,
-                                )
-                                .join('')}
-                        </div>
-                    `;
+                                <div class="timeline-title">${item.title || item.degree || ''}</div>
+                                ${item.location ? `<div class="timeline-location">${item.location}</div>` : ''}
+                                ${
+                                    item.description && Array.isArray(item.description)
+                                        ? `
+                                    <ul class="timeline-description">
+                                        ${item.description.map((desc) => `<li>${desc}</li>`).join('')}
+                                    </ul>
+                                `
+                                        : ''
+                                }
+                            </div>
+                        `,
+                            )
+                            .join('')}
+                    </div>
+                `;
                 }
                 break;
+
             case 'reference':
                 if (Array.isArray(section.value)) {
                     content = `
-                        <div class="section-content">
-                            ${section.value
-                                .map(
-                                    (ref) => `
-                                <div class="reference-item">
-                                    <div class="reference-name">${ref.name || ''}</div>
-                                    <div class="reference-company">${ref.company || ''}</div>
-                                    <div class="reference-contact">${ref.email || ''} ${ref.phone ? `• ${ref.phone}` : ''}</div>
-                                </div>
-                            `,
-                                )
-                                .join('')}
-                        </div>
-                    `;
+                    <div class="section-content">
+                        ${section.value
+                            .map(
+                                (ref) => `
+                            <div class="reference-item">
+                                <div class="reference-name">${ref.name || ''}</div>
+                                <div class="reference-company">${ref.company || ''}</div>
+                                <div class="reference-contact">${ref.email || ''} ${ref.phone ? `• ${ref.phone}` : ''}</div>
+                            </div>
+                        `,
+                            )
+                            .join('')}
+                    </div>
+                `;
                 }
                 break;
+
             default:
                 content = `<div class="section-content">${JSON.stringify(section.value)}</div>`;
         }
@@ -268,13 +299,13 @@ class ResumeController {
                     if (!section) return '';
 
                     return `
-                    <div class="resume-section">
-                        <h3 class="section-title" style="color: ${titleColor};">
-                            ${section.name || item.name.charAt(0).toUpperCase() + item.name.slice(1)}
-                        </h3>
-                        ${this.generateSectionContent(section, item)}
-                    </div>
-                `;
+                <div class="resume-section">
+                    <h3 class="section-title" style="color: ${titleColor};">
+                        ${section.name || item.name.charAt(0).toUpperCase() + item.name.slice(1)}
+                    </h3>
+                    ${this.generateSectionContent(section, item)}
+                </div>
+            `;
                 })
                 .join('');
         };
@@ -283,265 +314,280 @@ class ResumeController {
         const rightColumn = resumeData.template?.pages?.[0]?.columns?.[1]?.list || [];
 
         return `
-            <!DOCTYPE html>
-            <html lang="en">
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>Resume - ${resumeData.basicDetail?.name || 'Resume'}</title>
-                <style>
-                    * {
-                        margin: 0;
-                        padding: 0;
-                        box-sizing: border-box;
-                    }
-                    
-                    body {
-                        font-family: Arial, sans-serif;
-                        font-size: 12px;
-                        line-height: 1.4;
-                        color: ${contentColor};
-                        background-color: ${backgroundColor1};
-                    }
-                    
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Resume - ${resumeData.basicDetail?.name || 'Resume'}</title>
+            <style>
+                * {
+                    margin: 0;
+                    padding: 0;
+                    box-sizing: border-box;
+                }
+                
+                body {
+                    font-family: Arial, sans-serif;
+                    font-size: 12px;
+                    line-height: 1.4;
+                    color: ${contentColor};
+                    background-color: ${backgroundColor1};
+                }
+                
+                .resume-container {
+                    width: 8.27in;
+                    min-height: 11.69in;
+                    margin: 0 auto;
+                    background-color: white;
+                    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+                }
+                
+                .header {
+                    background-color: ${backgroundColor2};
+                    padding: 20px;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                }
+                
+                .header-content {
+                    flex-grow: 1;
+                }
+                
+                .header h1 {
+                    font-size: 28px;
+                    font-weight: bold;
+                    color: ${titleColor};
+                    margin-bottom: 5px;
+                }
+                
+                .header h2 {
+                    font-size: 18px;
+                    color: ${titleColor};
+                    margin-bottom: 10px;
+                    font-weight: normal;
+                }
+                
+                .contact-info {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 15px;
+                    margin-bottom: 5px;
+                }
+                
+                .contact-info span {
+                    color: ${contentColor};
+                    font-size: 11px;
+                }
+                
+                .profile-image {
+                    width: 90px;
+                    height: 90px;
+                    border-radius: 50%;
+                    object-fit: cover;
+                    border: 2px solid ${titleColor};
+                }
+                
+                .content-grid {
+                    display: grid;
+                    grid-template-columns: 1.4fr 1fr;
+                    gap: 20px;
+                    padding: 20px;
+                }
+                
+                .resume-section {
+                    margin-bottom: 25px;
+                    break-inside: avoid;
+                }
+                
+                .section-title {
+                    font-size: 16px;
+                    font-weight: bold;
+                    margin-bottom: 12px;
+                    color: ${titleColor};
+                    border-bottom: 1px solid ${titleColor};
+                    padding-bottom: 3px;
+                }
+                
+                .section-content {
+                    color: ${contentColor};
+                }
+                
+                .timeline-item {
+                    margin-bottom: 15px;
+                    break-inside: avoid;
+                }
+                
+                .timeline-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: flex-start;
+                    margin-bottom: 5px;
+                }
+                
+                .timeline-header h4 {
+                    font-size: 13px;
+                    font-weight: bold;
+                    color: ${titleColor};
+                    margin: 0;
+                }
+                
+                .timeline-date {
+                    font-size: 10px;
+                    color: ${contentColor};
+                    font-style: italic;
+                    white-space: nowrap;
+                }
+                
+                .timeline-title {
+                    font-size: 12px;
+                    font-weight: 600;
+                    margin-bottom: 3px;
+                    color: ${contentColor};
+                }
+                
+                .timeline-location {
+                    font-size: 10px;
+                    color: ${contentColor};
+                    margin-bottom: 5px;
+                    font-style: italic;
+                }
+                
+                .timeline-description {
+                    list-style-type: disc;
+                    padding-left: 15px;
+                    margin-top: 5px;
+                }
+                
+                .timeline-description li {
+                    margin-bottom: 3px;
+                    font-size: 11px;
+                }
+                
+                .point-list {
+                    list-style-type: disc;
+                    padding-left: 15px;
+                }
+                
+                .point-list li {
+                    margin-bottom: 3px;
+                    font-size: 11px;
+                }
+                
+                .skill-list {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 6px;
+                    margin-top: 5px;
+                }
+                
+                .skill-item {
+                    background-color: ${titleColor};
+                    color: white;
+                    padding: 8px 16px;
+                    border-radius: 20px;
+                    font-size: 11px;
+                    font-weight: 500;
+                    text-align: center;
+                    white-space: nowrap;
+                    transition: all 0.3s ease;
+                }
+                
+                .skill-item:hover {
+                    background-color: ${contentColor};
+                    transform: translateY(-1px);
+                }
+                
+                .score-item {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 8px;
+                }
+                
+                .score-name {
+                    font-size: 11px;
+                    font-weight: 500;
+                    flex: 1;
+                }
+                
+                .score-bar {
+                    width: 60px;
+                    height: 8px;
+                    background-color: #e0e0e0;
+                    border-radius: 4px;
+                    overflow: hidden;
+                    margin-left: 10px;
+                }
+                
+                .score-fill {
+                    height: 100%;
+                    background-color: ${titleColor};
+                    border-radius: 4px;
+                }
+                
+                .reference-item {
+                    margin-bottom: 12px;
+                }
+                
+                .reference-name {
+                    font-weight: bold;
+                    font-size: 12px;
+                    color: ${titleColor};
+                }
+                
+                .reference-company {
+                    font-size: 11px;
+                    color: ${contentColor};
+                    margin-bottom: 2px;
+                }
+                
+                .reference-contact {
+                    font-size: 10px;
+                    color: ${contentColor};
+                }
+                
+                @media print {
                     .resume-container {
-                        width: 8.27in;
-                        min-height: 11.69in;
-                        margin: 0 auto;
-                        background-color: white;
-                        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+                        box-shadow: none;
                     }
                     
-                    .header {
-                        background-color: ${backgroundColor2};
-                        padding: 20px;
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                    }
-                    
-                    .header-content {
-                        flex-grow: 1;
-                    }
-                    
-                    .header h1 {
-                        font-size: 28px;
-                        font-weight: bold;
-                        color: ${titleColor};
-                        margin-bottom: 5px;
-                    }
-                    
-                    .header h2 {
-                        font-size: 18px;
-                        color: ${titleColor};
-                        margin-bottom: 10px;
-                        font-weight: normal;
-                    }
-                    
-                    .contact-info {
-                        display: flex;
-                        flex-wrap: wrap;
-                        gap: 15px;
-                        margin-bottom: 5px;
-                    }
-                    
-                    .contact-info span {
-                        color: ${contentColor};
-                        font-size: 11px;
-                    }
-                    
-                    .profile-image {
-                        width: 90px;
-                        height: 90px;
-                        border-radius: 50%;
-                        object-fit: cover;
-                        border: 2px solid ${titleColor};
-                    }
-                    
-                    .content-grid {
-                        display: grid;
-                        grid-template-columns: 1.4fr 1fr;
-                        gap: 20px;
-                        padding: 20px;
-                    }
-                    
-                    .resume-section {
-                        margin-bottom: 25px;
-                        break-inside: avoid;
-                    }
-                    
-                    .section-title {
-                        font-size: 16px;
-                        font-weight: bold;
-                        margin-bottom: 12px;
-                        color: ${titleColor};
-                        border-bottom: 1px solid ${titleColor};
-                        padding-bottom: 3px;
-                    }
-                    
-                    .section-content {
-                        color: ${contentColor};
-                    }
-                    
-                    .timeline-item {
-                        margin-bottom: 15px;
-                        break-inside: avoid;
-                    }
-                    
-                    .timeline-header {
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: flex-start;
-                        margin-bottom: 5px;
-                    }
-                    
-                    .timeline-header h4 {
-                        font-size: 13px;
-                        font-weight: bold;
-                        color: ${titleColor};
-                        margin: 0;
-                    }
-                    
-                    .timeline-date {
-                        font-size: 10px;
-                        color: ${contentColor};
-                        font-style: italic;
-                        white-space: nowrap;
-                    }
-                    
-                    .timeline-title {
-                        font-size: 12px;
-                        font-weight: 600;
-                        margin-bottom: 3px;
-                        color: ${contentColor};
-                    }
-                    
-                    .timeline-location {
-                        font-size: 10px;
-                        color: ${contentColor};
-                        margin-bottom: 5px;
-                        font-style: italic;
-                    }
-                    
-                    .timeline-description {
-                        list-style-type: disc;
-                        padding-left: 15px;
-                        margin-top: 5px;
-                    }
-                    
-                    .timeline-description li {
-                        margin-bottom: 3px;
-                        font-size: 11px;
-                    }
-                    
-                    .point-list {
-                        list-style-type: disc;
-                        padding-left: 15px;
-                    }
-                    
-                    .point-list li {
-                        margin-bottom: 3px;
-                        font-size: 11px;
-                    }
-                    
-                    .skill-list {
-                        display: flex;
-                        flex-wrap: wrap;
-                        gap: 8px;
-                    }
-                    
-                    .skill-item {
-                        background-color: ${backgroundColor2};
-                        padding: 4px 8px;
-                        border-radius: 12px;
-                        font-size: 10px;
-                        color: ${contentColor};
-                    }
-                    
-                    .score-item {
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                        margin-bottom: 8px;
-                    }
-                    
-                    .score-name {
-                        font-size: 11px;
-                        font-weight: 500;
-                        flex: 1;
-                    }
-                    
-                    .score-bar {
-                        width: 60px;
-                        height: 8px;
-                        background-color: #e0e0e0;
-                        border-radius: 4px;
-                        overflow: hidden;
-                        margin-left: 10px;
-                    }
-                    
-                    .score-fill {
-                        height: 100%;
+                    .skill-item:hover {
                         background-color: ${titleColor};
-                        border-radius: 4px;
+                        transform: none;
                     }
-                    
-                    .reference-item {
-                        margin-bottom: 12px;
-                    }
-                    
-                    .reference-name {
-                        font-weight: bold;
-                        font-size: 12px;
-                        color: ${titleColor};
-                    }
-                    
-                    .reference-company {
-                        font-size: 11px;
-                        color: ${contentColor};
-                        margin-bottom: 2px;
-                    }
-                    
-                    .reference-contact {
-                        font-size: 10px;
-                        color: ${contentColor};
-                    }
-                    
-                    @media print {
-                        .resume-container {
-                            box-shadow: none;
-                        }
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="resume-container">
-                    <div class="header">
-                        <div class="header-content">
-                            <h1>${resumeData.basicDetail?.name || ''}</h1>
-                            <h2>${resumeData.basicDetail?.title || ''}</h2>
-                            <div class="contact-info">
-                                ${resumeData.basicDetail?.email ? `<span>${resumeData.basicDetail.email}</span>` : ''}
-                                ${resumeData.basicDetail?.phone ? `<span>${resumeData.basicDetail.phone}</span>` : ''}
-                                ${resumeData.basicDetail?.location ? `<span>${resumeData.basicDetail.location}</span>` : ''}
-                            </div>
-                            ${resumeData.basicDetail?.websiteUrl?.linkedin ? `<div><span style="font-size: 10px;">${resumeData.basicDetail.websiteUrl.linkedin}</span></div>` : ''}
+                }
+            </style>
+        </head>
+        <body>
+            <div class="resume-container">
+                <div class="header">
+                    <div class="header-content">
+                        <h1>${resumeData.basicDetail?.name || ''}</h1>
+                        <h2>${resumeData.basicDetail?.title || ''}</h2>
+                        <div class="contact-info">
+                            ${resumeData.basicDetail?.email ? `<span>${resumeData.basicDetail.email}</span>` : ''}
+                            ${resumeData.basicDetail?.phone ? `<span>${resumeData.basicDetail.phone}</span>` : ''}
+                            ${resumeData.basicDetail?.location ? `<span>${resumeData.basicDetail.location}</span>` : ''}
                         </div>
-                        ${resumeData.basicDetail?.imageURL ? `<img src="${resumeData.basicDetail.imageURL}" alt="Profile" class="profile-image" />` : ''}
+                        ${resumeData.basicDetail?.websiteUrl?.linkedin ? `<div><span style="font-size: 10px;">${resumeData.basicDetail.websiteUrl.linkedin}</span></div>` : ''}
                     </div>
-                    
-                    <div class="content-grid">
-                        <div class="left-column">
-                            ${generateColumnContent(leftColumn)}
-                        </div>
-                        <div class="right-column">
-                            ${generateColumnContent(rightColumn)}
-                        </div>
+                    ${resumeData.basicDetail?.imageURL ? `<img src="${resumeData.basicDetail.imageURL}" alt="Profile" class="profile-image" />` : ''}
+                </div>
+                
+                <div class="content-grid">
+                    <div class="left-column">
+                        ${generateColumnContent(leftColumn)}
+                    </div>
+                    <div class="right-column">
+                        ${generateColumnContent(rightColumn)}
                     </div>
                 </div>
-            </body>
-            </html>
-        `;
+            </div>
+        </body>
+        </html>
+    `;
     }
 
     /**
@@ -580,13 +626,13 @@ class ResumeController {
                     if (!section) return '';
 
                     return `
-                    <div class="resume-section">
-                        <h3 class="section-title" style="color: ${titleColor};">
-                            ${section.name || item.name.charAt(0).toUpperCase() + item.name.slice(1)}
-                        </h3>
-                        ${this.generateSectionContent(section, item)}
-                    </div>
-                `;
+                <div class="resume-section">
+                    <h3 class="section-title" style="color: ${titleColor};">
+                        ${section.name || item.name.charAt(0).toUpperCase() + item.name.slice(1)}
+                    </h3>
+                    ${this.generateSectionContent(section, item)}
+                </div>
+            `;
                 })
                 .join('');
         };
@@ -594,243 +640,262 @@ class ResumeController {
         const allItems = resumeData.template?.pages?.[0]?.columns?.[0]?.list || [];
 
         return `
-            <!DOCTYPE html>
-            <html lang="en">
-            <head>
-                <meta charset="UTF-8">
-                <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>Resume - ${resumeData.basicDetail?.name || 'Resume'}</title>
-                <style>
-                    * {
-                        margin: 0;
-                        padding: 0;
-                        box-sizing: border-box;
-                    }
-                    
-                    body {
-                        font-family: Arial, sans-serif;
-                        font-size: 12px;
-                        line-height: 1.4;
-                        color: ${contentColor};
-                        background-color: ${backgroundColor1};
-                    }
-                    
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Resume - ${resumeData.basicDetail?.name || 'Resume'}</title>
+            <style>
+                * {
+                    margin: 0;
+                    padding: 0;
+                    box-sizing: border-box;
+                }
+                
+                body {
+                    font-family: Arial, sans-serif;
+                    font-size: 12px;
+                    line-height: 1.4;
+                    color: ${contentColor};
+                    background-color: ${backgroundColor1};
+                }
+                
+                .resume-container {
+                    width: 8.27in;
+                    min-height: 11.69in;
+                    margin: 0 auto;
+                    background-color: white;
+                    padding: 30px;
+                    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+                }
+                
+                .header {
+                    text-align: center;
+                    margin-bottom: 30px;
+                    padding-bottom: 20px;
+                    border-bottom: 2px solid ${titleColor};
+                }
+                
+                .header h1 {
+                    font-size: 32px;
+                    font-weight: bold;
+                    color: ${titleColor};
+                    margin-bottom: 8px;
+                }
+                
+                .header h2 {
+                    font-size: 18px;
+                    color: ${contentColor};
+                    margin-bottom: 15px;
+                    font-weight: normal;
+                }
+                
+                .contact-info {
+                    display: flex;
+                    justify-content: center;
+                    flex-wrap: wrap;
+                    gap: 20px;
+                    margin-bottom: 10px;
+                }
+                
+                .contact-info span {
+                    color: ${contentColor};
+                    font-size: 12px;
+                }
+                
+                .resume-section {
+                    margin-bottom: 25px;
+                    break-inside: avoid;
+                }
+                
+                .section-title {
+                    font-size: 18px;
+                    font-weight: bold;
+                    margin-bottom: 15px;
+                    color: ${titleColor};
+                    text-transform: uppercase;
+                    letter-spacing: 1px;
+                    border-bottom: 2px solid ${titleColor};
+                    padding-bottom: 5px;
+                }
+                
+                .section-content {
+                    color: ${contentColor};
+                    padding-left: 10px;
+                }
+                
+                .timeline-item {
+                    margin-bottom: 20px;
+                    break-inside: avoid;
+                }
+                
+                .timeline-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: flex-start;
+                    margin-bottom: 5px;
+                }
+                
+                .timeline-header h4 {
+                    font-size: 14px;
+                    font-weight: bold;
+                    color: ${titleColor};
+                    margin: 0;
+                }
+                
+                .timeline-date {
+                    font-size: 11px;
+                    color: ${contentColor};
+                    font-style: italic;
+                    white-space: nowrap;
+                }
+                
+                .timeline-title {
+                    font-size: 13px;
+                    font-weight: 600;
+                    margin-bottom: 3px;
+                    color: ${contentColor};
+                }
+                
+                .timeline-location {
+                    font-size: 11px;
+                    color: ${contentColor};
+                    margin-bottom: 8px;
+                    font-style: italic;
+                }
+                
+                .timeline-description {
+                    list-style-type: disc;
+                    padding-left: 20px;
+                    margin-top: 8px;
+                }
+                
+                .timeline-description li {
+                    margin-bottom: 4px;
+                    font-size: 12px;
+                }
+                
+                .point-list {
+                    list-style-type: disc;
+                    padding-left: 20px;
+                }
+                
+                .point-list li {
+                    margin-bottom: 4px;
+                    font-size: 12px;
+                }
+                
+                .skill-list {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 8px;
+                    margin-top: 5px;
+                }
+                
+                .skill-item {
+                    background-color: ${titleColor};
+                    color: white;
+                    padding: 10px 18px;
+                    border-radius: 25px;
+                    font-size: 12px;
+                    font-weight: 500;
+                    text-align: center;
+                    white-space: nowrap;
+                    transition: all 0.3s ease;
+                    border: 2px solid ${titleColor};
+                }
+                
+                .skill-item:hover {
+                    background-color: white;
+                    color: ${titleColor};
+                    transform: translateY(-2px);
+                    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+                }
+                
+                .score-item {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 10px;
+                }
+                
+                .score-name {
+                    font-size: 12px;
+                    font-weight: 500;
+                    flex: 1;
+                }
+                
+                .score-bar {
+                    width: 80px;
+                    height: 10px;
+                    background-color: #e0e0e0;
+                    border-radius: 5px;
+                    overflow: hidden;
+                    margin-left: 15px;
+                }
+                
+                .score-fill {
+                    height: 100%;
+                    background-color: ${titleColor};
+                    border-radius: 5px;
+                }
+                
+                .reference-item {
+                    margin-bottom: 15px;
+                }
+                
+                .reference-name {
+                    font-weight: bold;
+                    font-size: 13px;
+                    color: ${titleColor};
+                }
+                
+                .reference-company {
+                    font-size: 12px;
+                    color: ${contentColor};
+                    margin-bottom: 3px;
+                }
+                
+                .reference-contact {
+                    font-size: 11px;
+                    color: ${contentColor};
+                }
+                
+                @media print {
                     .resume-container {
-                        width: 8.27in;
-                        min-height: 11.69in;
-                        margin: 0 auto;
-                        background-color: white;
-                        padding: 30px;
-                        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+                        box-shadow: none;
                     }
                     
-                    .header {
-                        text-align: center;
-                        margin-bottom: 30px;
-                        padding-bottom: 20px;
-                        border-bottom: 2px solid ${titleColor};
-                    }
-                    
-                    .header h1 {
-                        font-size: 32px;
-                        font-weight: bold;
-                        color: ${titleColor};
-                        margin-bottom: 8px;
-                    }
-                    
-                    .header h2 {
-                        font-size: 18px;
-                        color: ${contentColor};
-                        margin-bottom: 15px;
-                        font-weight: normal;
-                    }
-                    
-                    .contact-info {
-                        display: flex;
-                        justify-content: center;
-                        flex-wrap: wrap;
-                        gap: 20px;
-                        margin-bottom: 10px;
-                    }
-                    
-                    .contact-info span {
-                        color: ${contentColor};
-                        font-size: 12px;
-                    }
-                    
-                    .resume-section {
-                        margin-bottom: 25px;
-                        break-inside: avoid;
-                    }
-                    
-                    .section-title {
-                        font-size: 18px;
-                        font-weight: bold;
-                        margin-bottom: 15px;
-                        color: ${titleColor};
-                        text-transform: uppercase;
-                        letter-spacing: 1px;
-                        border-bottom: 2px solid ${titleColor};
-                        padding-bottom: 5px;
-                    }
-                    
-                    .section-content {
-                        color: ${contentColor};
-                        padding-left: 10px;
-                    }
-                    
-                    .timeline-item {
-                        margin-bottom: 20px;
-                        break-inside: avoid;
-                    }
-                    
-                    .timeline-header {
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: flex-start;
-                        margin-bottom: 5px;
-                    }
-                    
-                    .timeline-header h4 {
-                        font-size: 14px;
-                        font-weight: bold;
-                        color: ${titleColor};
-                        margin: 0;
-                    }
-                    
-                    .timeline-date {
-                        font-size: 11px;
-                        color: ${contentColor};
-                        font-style: italic;
-                        white-space: nowrap;
-                    }
-                    
-                    .timeline-title {
-                        font-size: 13px;
-                        font-weight: 600;
-                        margin-bottom: 3px;
-                        color: ${contentColor};
-                    }
-                    
-                    .timeline-location {
-                        font-size: 11px;
-                        color: ${contentColor};
-                        margin-bottom: 8px;
-                        font-style: italic;
-                    }
-                    
-                    .timeline-description {
-                        list-style-type: disc;
-                        padding-left: 20px;
-                        margin-top: 8px;
-                    }
-                    
-                    .timeline-description li {
-                        margin-bottom: 4px;
-                        font-size: 12px;
-                    }
-                    
-                    .point-list {
-                        list-style-type: disc;
-                        padding-left: 20px;
-                    }
-                    
-                    .point-list li {
-                        margin-bottom: 4px;
-                        font-size: 12px;
-                    }
-                    
-                    .skill-list {
-                        display: flex;
-                        flex-wrap: wrap;
-                        gap: 10px;
-                    }
-                    
-                    .skill-item {
-                        background-color: #f0f0f0;
-                        padding: 6px 12px;
-                        border-radius: 15px;
-                        font-size: 11px;
-                        color: ${contentColor};
-                        border: 1px solid ${titleColor};
-                    }
-                    
-                    .score-item {
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                        margin-bottom: 10px;
-                    }
-                    
-                    .score-name {
-                        font-size: 12px;
-                        font-weight: 500;
-                        flex: 1;
-                    }
-                    
-                    .score-bar {
-                        width: 80px;
-                        height: 10px;
-                        background-color: #e0e0e0;
-                        border-radius: 5px;
-                        overflow: hidden;
-                        margin-left: 15px;
-                    }
-                    
-                    .score-fill {
-                        height: 100%;
+                    .skill-item:hover {
                         background-color: ${titleColor};
-                        border-radius: 5px;
+                        color: white;
+                        transform: none;
+                        box-shadow: none;
                     }
-                    
-                    .reference-item {
-                        margin-bottom: 15px;
-                    }
-                    
-                    .reference-name {
-                        font-weight: bold;
-                        font-size: 13px;
-                        color: ${titleColor};
-                    }
-                    
-                    .reference-company {
-                        font-size: 12px;
-                        color: ${contentColor};
-                        margin-bottom: 3px;
-                    }
-                    
-                    .reference-contact {
-                        font-size: 11px;
-                        color: ${contentColor};
-                    }
-                    
-                    @media print {
-                        .resume-container {
-                            box-shadow: none;
-                        }
-                    }
-                </style>
-            </head>
-            <body>
-                <div class="resume-container">
-                    <div class="header">
-                        <h1>${resumeData.basicDetail?.name || ''}</h1>
-                        <h2>${resumeData.basicDetail?.title || ''}</h2>
-                        <div class="contact-info">
-                            ${resumeData.basicDetail?.email ? `<span>${resumeData.basicDetail.email}</span>` : ''}
-                            ${resumeData.basicDetail?.phone ? `<span>${resumeData.basicDetail.phone}</span>` : ''}
-                            ${resumeData.basicDetail?.location ? `<span>${resumeData.basicDetail.location}</span>` : ''}
-                        </div>
-                        ${resumeData.basicDetail?.websiteUrl?.linkedin ? `<div><span style="font-size: 11px;">${resumeData.basicDetail.websiteUrl.linkedin}</span></div>` : ''}
+                }
+            </style>
+        </head>
+        <body>
+            <div class="resume-container">
+                <div class="header">
+                    <h1>${resumeData.basicDetail?.name || ''}</h1>
+                    <h2>${resumeData.basicDetail?.title || ''}</h2>
+                    <div class="contact-info">
+                        ${resumeData.basicDetail?.email ? `<span>${resumeData.basicDetail.email}</span>` : ''}
+                        ${resumeData.basicDetail?.phone ? `<span>${resumeData.basicDetail.phone}</span>` : ''}
+                        ${resumeData.basicDetail?.location ? `<span>${resumeData.basicDetail.location}</span>` : ''}
                     </div>
-                    
-                    <div class="content">
-                        ${generateContent(allItems)}
-                    </div>
+                    ${resumeData.basicDetail?.websiteUrl?.linkedin ? `<div><span style="font-size: 11px;">${resumeData.basicDetail.websiteUrl.linkedin}</span></div>` : ''}
                 </div>
-            </body>
-            </html>
-        `;
+                
+                <div class="content">
+                    ${generateContent(allItems)}
+                </div>
+            </div>
+        </body>
+        </html>
+    `;
     }
 
     /**
