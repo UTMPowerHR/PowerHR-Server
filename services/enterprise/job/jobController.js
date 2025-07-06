@@ -1,9 +1,11 @@
 import { Job, Posting, Application } from '../../../models/enterprise/job/index.js';
 import { Resume } from '../../../models/resume/index.js';
 import dayjs from 'dayjs';
+import customParseFormat from 'dayjs/plugin/customParseFormat.js';
 import cloneDeep from 'lodash/cloneDeep.js';
 import ApiError from '../../../util/ApiError.js';
 
+dayjs.extend(customParseFormat);
 class JobController {
     constructor(enterpriseFacade) {
         this.enterpriseFacade = enterpriseFacade;
@@ -661,15 +663,29 @@ class JobController {
         applications.forEach((application) => {
             console.log('application123456', application.resume);
             // Calculate experience for each applicant
-            const experience = application.resume?.experience?.value?.reduce((prev, current) => {
-                const from = dayjs(current.date.from);
-                const to = current.date.to !== 'Present' ? dayjs(current.date.to) : dayjs();
+            const experience = application.resume?.experience?.value?.reduce((total, current) => {
+                const parseDate = (str) => {
+                    if (!str || typeof str !== 'string') return null;
+                    str = str.trim();
+                    const formats = ['YYYY-MM-DD', 'YYYY-MM', 'MMM YYYY', 'MMMM YYYY', 'YYYY'];
+                    for (const fmt of formats) {
+                        const parsed = dayjs(str, fmt, true);
+                        if (parsed.isValid()) return parsed;
+                    }
+                    const fallback = dayjs(str);
+                    return fallback.isValid() ? fallback : null;
+                };
 
-                return prev + to.diff(from, 'year');
+                const from = parseDate(current.date.from);
+                const to = current.date.to === 'Present' ? dayjs() : parseDate(current.date.to);
+
+                if (!from || !to || !from.isValid() || !to.isValid()) return total;
+
+                return total + to.diff(from, 'year', false); // use float years
             }, 0);
 
-            application.resume.totalExperience = experience;
-            console.log('experience123', experience);
+            application.resume.totalExperience = parseFloat(experience.toFixed(1));
+            console.log('experience123', application.resume.totalExperience);
 
             // score for each requirement
             // -1 = not qualified

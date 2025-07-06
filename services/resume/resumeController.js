@@ -1257,11 +1257,8 @@ class ResumeController {
                 if (workEntry.parsed) {
                     company = workEntry.parsed.workExperienceOrganization?.raw || '';
                     jobTitle = workEntry.parsed.workExperienceJobTitle?.raw || '';
-                    location = workEntry.parsed.workExperienceLocation.raw;
-                    descriptions =
-                        workEntry.parsed.workExperienceDescription.raw ||
-                        workEntry.parsed.workExperienceDescription.value ||
-                        '';
+                    location = workEntry.parsed.workExperienceLocation?.raw || '';
+                    descriptions = workEntry.parsed.workExperienceDescription?.map((item) => item.raw || '') || [''];
                     const dateRaw = workEntry.parsed.workExperienceDates?.raw || '';
                     if (dateRaw) {
                         const { start, end } = this.parseDynamicDateRange(dateRaw);
@@ -1274,13 +1271,14 @@ class ResumeController {
                     location = workEntry.parsed.workExperienceLocation.raw;
                 }
 
-                // if (
+                //                 if (
                 //     workEntry.parsed?.workExperienceDescription &&
-                //     Array.isArray(workEntry.parsed.workExperienceDescription)
+                //     Array.isArray(workEntry.parsed.workExperienceDescription) &&
+                //     workEntry.parsed?.workExperienceDescription.length > 0
                 // ) {
-                //     descriptions = workEntry.parsed.workExperienceDescription
-                //         .map((desc) => desc.raw || desc)
-                //         .filter((desc) => desc);
+                //     descriptions = workEntry.parsed?.workExperienceDescription
+                //         .map((item) => item.raw || '')
+                //         .join(', ');
                 // }
 
                 if (company || jobTitle) {
@@ -1706,35 +1704,38 @@ class ResumeController {
         const slashFormat = /^(\d{1,2})\/(\d{4})$/;
         if (slashFormat.test(dateStr)) {
             const [, month, year] = dateStr.match(slashFormat);
-            const monthName = new Date(`${year}-${month}-01`).toLocaleString('default', { month: 'short' });
+            const monthName = new Date(`${year}-${month.padStart(2, '0')}-01`).toLocaleString('default', {
+                month: 'long',
+            });
             return `${monthName} ${year}`;
         }
 
-        // Match Month YYYY (e.g., "May 2018")
-        const monthYearFormat = /^(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\s+\d{4}$/i;
-        if (monthYearFormat.test(dateStr)) {
-            const month = dateStr.slice(0, 3).toLowerCase();
-            const capitalizedMonth = month.charAt(0).toUpperCase() + month.slice(1);
-            const year = dateStr.slice(3).trim();
-            return `${capitalizedMonth} ${year}`;
+        // Match short Month YYYY (e.g., "May 2018")
+        const shortMonthYearFormat = /^(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)\s+\d{4}$/i;
+        if (shortMonthYearFormat.test(dateStr)) {
+            const [month, year] = dateStr.split(/\s+/);
+            const date = new Date(`${month} 1, ${year}`);
+            const monthName = date.toLocaleString('default', { month: 'long' });
+            return `${monthName} ${year}`;
         }
 
-        // Match full date (e.g., "January 2020")
+        // Match full Month YYYY (e.g., "January 2020")
         const fullMonthFormat =
             /^(january|february|march|april|may|june|july|august|september|october|november|december)\s+\d{4}$/i;
         if (fullMonthFormat.test(dateStr)) {
-            const [month, year] = dateStr.split(' ');
-            const monthAbbr = new Date(`${month} 1, 2020`).toLocaleString('default', { month: 'short' });
-            return `${monthAbbr} ${year}`;
+            return dateStr; // Already correct format
         }
 
-        // If already formatted (e.g., "Jun 2020"), leave as is
-        const knownFormat = /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+\d{4}$/;
+        // Match abbreviated Month YYYY (e.g., "Jun 2020") → expand to full name
+        const knownFormat = /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{4})$/i;
         if (knownFormat.test(dateStr)) {
-            return dateStr;
+            const [, shortMonth, year] = dateStr.match(knownFormat);
+            const date = new Date(`${shortMonth} 1, ${year}`);
+            const fullMonth = date.toLocaleString('default', { month: 'long' });
+            return `${fullMonth} ${year}`;
         }
 
-        // Fallback: Return original if no match found
+        // Fallback: Return original if no match
         return dateStr;
     }
 
