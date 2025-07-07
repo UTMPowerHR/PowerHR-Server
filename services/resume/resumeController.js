@@ -1274,7 +1274,7 @@ class ResumeController {
                     company = workEntry.parsed.workExperienceOrganization?.raw || '';
                     jobTitle = workEntry.parsed.workExperienceJobTitle?.raw || '';
                     location = workEntry.parsed.workExperienceLocation?.raw || '';
-                    descriptions = workEntry.parsed.workExperienceDescription?.map((item) => item.raw || '') || [''];
+                    // descriptions = workEntry.parsed.workExperienceDescription?.map((item) => item.raw || '') || [''];
                     const dateRaw = workEntry.parsed.workExperienceDates?.raw || '';
                     if (dateRaw) {
                         const { start, end } = this.parseDynamicDateRange(dateRaw);
