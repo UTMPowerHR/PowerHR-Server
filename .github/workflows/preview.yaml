@@ -85,10 +85,10 @@ jobs:
               uses: actions/setup-node@v4
               with:
                   node-version: '20'
-            - name: Load & Cache Dependencies
-              uses: ./.github/actions/cached-deps
-            - name: Install Dependencies (including new packages)
-              run: npm ci
+            - name: Clear npm cache
+              run: npm cache clean --force
+            - name: Install Dependencies (fresh)
+              run: npm install --no-cache
             - name: Run Tests
               run: npm run test
             - name: Update deployment status (failure)
