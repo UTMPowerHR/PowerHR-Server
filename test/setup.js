@@ -1,12 +1,6 @@
-import { vi } from 'vitest';
-import { MongoMemoryServer } from 'mongodb-memory-server';
-import mongoose from 'mongoose';
-import dotenv from 'dotenv';
-import fastify from 'fastify';
-import ajvFormats from 'ajv-formats';
-import { afterAll, beforeAll, afterEach } from 'vitest';
+import { vi, beforeAll, afterAll, afterEach } from 'vitest';
 
-// Mock @sparticuz/chromium
+// IMPORTANT: Hoist mocks to the very top, before any other imports
 vi.mock('@sparticuz/chromium', () => ({
     default: {
         args: ['--no-sandbox', '--disable-setuid-sandbox'],
@@ -16,7 +10,6 @@ vi.mock('@sparticuz/chromium', () => ({
     },
 }));
 
-// Mock puppeteer-core
 vi.mock('puppeteer-core', () => ({
     default: {
         launch: vi.fn().mockResolvedValue({
@@ -30,12 +23,18 @@ vi.mock('puppeteer-core', () => ({
     },
 }));
 
+// Now import everything else
+import { MongoMemoryServer } from 'mongodb-memory-server';
+import mongoose from 'mongoose';
+import dotenv from 'dotenv';
+import fastify from 'fastify';
+import ajvFormats from 'ajv-formats';
+
 dotenv.config({ path: './test/.env.test' });
 
 const app = fastify({
     ajv: {
         plugins: [
-            // Add support for additional formats like 'binary'
             (ajv) => {
                 ajvFormats(ajv, ['binary']);
             },
@@ -48,7 +47,7 @@ app.register(import('../app.js'));
 
 let mongod;
 
-//Set up database connection before tests
+// Set up database connection before tests
 beforeAll(async () => {
     mongod = new MongoMemoryServer();
     await mongod.start();
