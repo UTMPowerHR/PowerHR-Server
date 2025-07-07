@@ -1,9 +1,34 @@
+import { vi } from 'vitest';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import fastify from 'fastify';
 import ajvFormats from 'ajv-formats';
 import { afterAll, beforeAll, afterEach } from 'vitest';
+
+// Mock @sparticuz/chromium
+vi.mock('@sparticuz/chromium', () => ({
+    default: {
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        defaultViewport: { width: 1280, height: 720 },
+        executablePath: vi.fn().mockResolvedValue('/usr/bin/chromium-browser'),
+        headless: true,
+    },
+}));
+
+// Mock puppeteer-core
+vi.mock('puppeteer-core', () => ({
+    default: {
+        launch: vi.fn().mockResolvedValue({
+            newPage: vi.fn().mockResolvedValue({
+                setContent: vi.fn().mockResolvedValue(),
+                pdf: vi.fn().mockResolvedValue(Buffer.from('fake pdf content')),
+                setDefaultTimeout: vi.fn(),
+            }),
+            close: vi.fn().mockResolvedValue(),
+        }),
+    },
+}));
 
 dotenv.config({ path: './test/.env.test' });
 
@@ -17,6 +42,7 @@ const app = fastify({
         ],
     },
 });
+
 // Register the routes from your Fastify application
 app.register(import('../app.js'));
 
