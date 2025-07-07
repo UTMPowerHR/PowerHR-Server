@@ -30,6 +30,7 @@
         "@fastify/sensible": "^5.0.0",
         "@fastify/swagger": "^8.14.0",
         "@fastify/swagger-ui": "^3.0.0",
+        "@sparticuz/chromium": "^137.0.1",
         "ajv-formats": "^3.0.1",
         "axios": "^1.6.8",
         "bcrypt": "^5.1.1",
@@ -46,7 +47,7 @@
         "multer": "^1.4.5-lts.1",
         "node-fetch": "^3.3.2",
         "nodemailer": "^6.9.13",
-        "puppeteer": "^24.10.1"
+        "puppeteer-core": "^24.11.2"
     },
     "devDependencies": {
         "@babel/eslint-parser": "^7.24.8",

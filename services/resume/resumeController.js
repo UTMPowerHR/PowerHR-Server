@@ -3,7 +3,8 @@ import { Resume } from '../../models/resume/index.js';
 import User from '../../models/users/user.js';
 import ApiError from '../../util/ApiError.js';
 import fetch from 'node-fetch';
-import puppeteer from 'puppeteer';
+import chromium from '@sparticuz/chromium';
+import puppeteer from 'puppeteer-core';
 
 class ResumeController {
     constructor() {}
@@ -902,23 +903,29 @@ class ResumeController {
      * Generate a PDF buffer for a resume using Puppeteer with dynamic templates.
      */
     async generatePDF(resumeData) {
+        let browser = null;
+
         try {
-            const browser = await puppeteer.launch({
-                headless: true,
+            console.log('Starting PDF generation on Vercel...');
+
+            browser = await puppeteer.launch({
                 args: [
-                    '--no-sandbox',
-                    '--disable-setuid-sandbox',
-                    '--disable-dev-shm-usage',
-                    '--disable-accelerated-2d-canvas',
-                    '--no-first-run',
-                    '--no-zygote',
-                    '--disable-gpu',
+                    ...chromium.args,
+                    '--hide-scrollbars',
+                    '--disable-web-security',
+                    '--disable-features=VizDisplayCompositor',
                 ],
+                defaultViewport: chromium.defaultViewport,
+                executablePath: await chromium.executablePath(),
+                headless: chromium.headless,
+                ignoreHTTPSErrors: true,
             });
+
             const page = await browser.newPage();
 
             let htmlContent;
             const templateName = resumeData.template?.name || 'modern';
+
             if (templateName === 'modern') {
                 htmlContent = this.generateModernTemplate(resumeData);
             } else if (templateName === 'basic') {
@@ -929,7 +936,7 @@ class ResumeController {
 
             await page.setContent(htmlContent, {
                 waitUntil: 'networkidle0',
-                timeout: 30000,
+                timeout: 25000,
             });
 
             const pdfBuffer = await page.pdf({
@@ -947,6 +954,15 @@ class ResumeController {
             return pdfBuffer;
         } catch (error) {
             console.error('Error generating PDF:', error);
+
+            if (browser) {
+                try {
+                    await browser.close();
+                } catch (closeError) {
+                    console.error('Error closing browser:', closeError);
+                }
+            }
+
             throw new Error('Failed to generate PDF');
         }
     }
