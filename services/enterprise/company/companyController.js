@@ -286,6 +286,7 @@ class CompanyController {
         }
         
         return employees;
+    }
 
     async getEmploymentHistory(){
         const employmentHistory = await EmploymentHistory.find({});

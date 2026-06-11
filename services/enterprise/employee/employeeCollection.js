@@ -1,5 +1,5 @@
-import EmployeeIterator from "./employeeIterator";
-import Employee from "../../../models/users/employee";
+import EmployeeIterator from "./employeeIterator.js";
+import Employee from "../../../models/users/employee.js";
 
 class EmployeeCollection {
     constructor() {

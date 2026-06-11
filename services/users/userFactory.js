@@ -489,11 +489,7 @@ class UserFactory {
                 profilePicture: user.profilePicture,
             }
             console.log(employmentHistory);
-            const employmentHistoryData = new EmploymentHistory(employmentHistory);
-
-            // await EmploymentHistory.create(employmentHistoryData);
-
-            await employmentHistoryData.save();
+            await EmploymentHistory.findByIdAndUpdate(user._id, employmentHistory, { upsert: true, new: true });
 
             const applicantData = {
                 _id: user._id, // Retain the same _id
