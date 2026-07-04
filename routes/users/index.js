@@ -1,11 +1,14 @@
 import UserFactory from '../../services/users/userFactory.js';
 import ApiError from '../../util/ApiError.js';
 import Firebase from '../../util/Firebase.js';
+import CompanyController from '../../services/enterprise/company/companyController.js';
+
 
 class UserRoutes {
     constructor(fastify) {
         this.fastify = fastify;
         this.userFactory = new UserFactory();
+        this.companyController = new CompanyController();
         this.initRoutes();
     }
 
@@ -61,7 +64,7 @@ class UserRoutes {
                 schema: {
                     description: 'Upload a profile picture for a user',
                     tags: ['User'],
-                    consumes: ['multipart/form-data'],
+                    consumes: ['application/json'], // Correct content type for JSON
                     params: {
                         type: 'object',
                         properties: {
@@ -72,14 +75,16 @@ class UserRoutes {
                     body: {
                         type: 'object',
                         properties: {
-                            file: { isFile: true },
+                            image: { type: 'string' }, // Base64 image
+                            id: { type: 'string' },    // User ID
                         },
-                        required: ['file'],
+                        required: ['image', 'id'],
                     },
                 },
             },
             this.uploadProfilePicture.bind(this),
         );
+
     }
 
     async getUser(request, reply) {
@@ -122,30 +127,27 @@ class UserRoutes {
     }
 
     async uploadProfilePicture(request, reply) {
-        const id = request.params.id;
-        const data = await request.body.file.toBuffer();
+        const { image, id } = request.body;
 
-        const fileName = request.body.file.filename;
-        const metadata = {
-            contentType: request.body.file.mimetype,
-        };
-
-        if (metadata.contentType !== 'image/jpeg' && metadata.contentType !== 'image/png') {
-            return reply.status(400).send({ error: 'Invalid file type' });
+        // Validate that the ID in the body matches the ID in the URL
+        if (request.params.id !== id) {
+            return reply.status(400).send({ error: 'User ID does not match the provided ID' });
         }
 
-        const fileBuffer = Buffer.from(data);
+        // Validate that the image is a Base64 string
+        if (!image.startsWith('data:image/')) {
+            return reply.status(400).send({ error: 'Invalid image format. Only Base64-encoded images are allowed.' });
+        }
 
-        const firebase = await Firebase.getInstance();
-
-        const url = await firebase.uploadFile(fileName, fileBuffer, metadata);
-
+        // Update the user's profile picture in the database
         const user = await this.userFactory.update('user', id, {
-            profilePicture: url,
+            profilePicture: image, // Store the Base64 image directly
         });
 
+        // Respond with the updated user object
         return reply.send(user);
     }
+
 }
 
 export default async function (fastify) {

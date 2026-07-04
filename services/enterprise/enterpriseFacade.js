@@ -78,7 +78,11 @@ class EnterpriseFacade {
     }
 
     async updateEmployee(employeeId, args) {
-        return await this.userFactory.update('employee', employeeId, args);
+        return await this.userFactory.update(args.__t.toLowerCase(), employeeId, args);
+    }
+
+    async convertEmployeeToApplicant(employeeId) {
+        return await this.userFactory.convert('employee', employeeId);
     }
 
     // Form
@@ -197,6 +201,11 @@ class EnterpriseFacade {
     //analytic
     async getTurnOver(companyId, startDate, endDate) {
         return await this.companyController.getTurnOver(companyId, startDate, endDate);
+    }
+
+    async getEmploymentHistory(){
+    
+        return await this.companyController.getEmploymentHistory();
     }
 }
 

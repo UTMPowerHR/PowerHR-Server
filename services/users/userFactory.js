@@ -2,8 +2,14 @@ import Applicant from '../../models/users/applicant.js';
 import Employee from '../../models/users/employee.js';
 import User from '../../models/users/user.js';
 import SysAdmin from '../../models/users/sysadmin.js';
+import JobController from '../enterprise/job/jobController.js';
 import ApiError from '../../util/ApiError.js';
 import ResumeController from '../resume/resumeController.js';
+import Application from '../../models/enterprise/job/application.js';
+import EmploymentHistory from '../../models/users/employmentHistory.js';
+import Email from '../../util/Email.js';
+import dayjs from 'dayjs';
+import mongoose from 'mongoose';
 
 class UserFactory {
     /**
@@ -260,24 +266,254 @@ class UserFactory {
      */
 
     async update(role, id, args) {
-        switch (role) {
-            case 'applicant':
-                await Applicant.findByIdAndUpdate(id, args);
-                break;
-            case 'employee':
-                await Employee.findByIdAndUpdate(id, args);
-                break;
-            case 'sysadmin':
-                await SysAdmin.findByIdAndUpdate(id, args);
-                break;
-            case 'user':
-                await User.findByIdAndUpdate(id, args);
-                break;
-            default:
-                throw new ApiError(400, 'Invalid role');
+        console.log('Update called with:', { role, id, args });
+    
+        let session;
+        try {
+            session = await mongoose.startSession();
+            session.startTransaction();
+    
+            switch (role) {
+                case 'applicant':
+                    console.log("ROLE: " + role);
+                    
+                    if (args.statusType === 'Accepted') {
+                        console.log('Status is Accepted for ID:', id);
+    
+                        // Fetch applicant details
+                        const applicant = await Applicant.findById(id).populate('appliedJobs').session(session);
+                        if (!applicant) {
+                            console.log('Testing1: ', id);
+
+                            throw new ApiError(404, 'Applicant not found');
+                        }
+    
+                        // Find the application related to the applicant
+                        const application = await Application
+                            .findOne({ applicant: id })
+                            .populate({
+                                path: 'posting',
+                                populate: { path: 'job', select: 'company title' } // Populate job reference
+                            })
+                            .session(session);
+    
+                        if (!application) {
+                            console.log('Testing2: ', id);
+                            throw new ApiError(404, 'Application details not found');
+                        }
+    
+                        const { posting } = application;
+                        const company = posting?.job?.company || null;
+                        const jobTitle = posting?.job?.title || 'Employee'; // Default job title
+                        const salary = posting?.salaryRange?.min || 0; // Default salary
+    
+                        console.log('Company:', company);
+                        console.log('Job Title:', jobTitle);
+    
+                        // Update the application resume
+                        await Application.findByIdAndUpdate(application._id, {
+                            resume: applicant.resume
+                        }, { session });
+    
+                        // Delete the original applicant
+                        await Applicant.deleteOne({ _id: id }, { session });
+                        
+                        // Create new employee record
+                        await Employee.create([{
+                            _id: applicant._id, // Preserve the same ID
+                            profilePicture: applicant.profilePicture,
+                            firstName: applicant.firstName,
+                            lastName: applicant.lastName,
+                            email: applicant.email,
+                            password: applicant.password, // Preserved hashed password
+                            gender: applicant.gender,
+                            company,
+                            personalEmail: args.personalEmail || applicant.email,
+                            jobTitle,
+                            salary,
+                            hireDate: applicant.reportDutyDate,
+                            department: args.department,
+                        }], { session });
+
+                        const formattedDate = dayjs(args.hireDate).format('DD/MM/YYYY');
+
+                        console.log('Role successfully updated to Employee');
+
+                        // Send email notification to applicant
+                        const emailSubject = 'Job Offer Accepted';
+                        const emailText = `Dear ${applicant.firstName},\n\nCongratulations! Your job offer for the position of ${jobTitle} at PowerHR has been accepted. We look forward to having you on board on ${formattedDate}!\n\nBest Regards,\nThe Team`;
+                        await Email.sendEmail(applicant.email, emailSubject, emailText);
+                        console.log('Email notification sent to applicant');
+
+                    } 
+                    else if (args.statusType === 'Rejected') {
+                        console.log('Status is Rejected for ID:', id);
+    
+                        // Fetch application related to the applicant
+                        const application = await Application
+                            .findOne({ applicant: id })
+                            .session(session);
+    
+                        if (!application) {
+                            throw new ApiError(404, 'Application details not found');
+                        }
+    
+                        // Update the status of the application to 'Rejected'
+                        await Application.findByIdAndUpdate(application._id, {
+                            status: {
+                                statusType: 'Rejected',
+                                reason: args.reason || 'Not provided',
+                                description: args.description || 'No description provided',
+                            }
+                        }, { session });
+    
+                        console.log('Application status updated to Rejected');
+                    }
+                    else if (args.statusType === 'Pending') {
+                        console.log('Status is Pending for ID:', id);
+                    
+                        const application = await Application.findOne({ applicant: id }).session(session);
+                        if (!application) {
+                            throw new ApiError(404, 'Application details not found');
+                        }
+                    
+                        // Update the application to 'Pending' status
+                        await Application.findByIdAndUpdate(application._id, {
+                            status: {
+                                statusType: 'Pending',
+                                reason: args.reason || '',
+                                description: args.description || '',
+                            },
+                            reportDutyDate: args.reportDutyDate || application.reportDutyDate // Update reportDutyDate
+                        }, { session });
+                    
+                        console.log('Application status updated to Pending');
+                    } 
+                    else {
+                        // If the status is not Accepted or Rejected, update the applicant details
+                        await Applicant.findByIdAndUpdate(id, args, { session });
+                    }
+                    break;
+    
+                case 'employee':
+                    await Employee.findByIdAndUpdate(id, args, { session });
+                    break;
+    
+                case 'sysadmin':
+                    await SysAdmin.findByIdAndUpdate(id, args, { session });
+                    break;
+    
+                case 'user':
+                    await User.findByIdAndUpdate(id, args, { session });
+                    break;
+    
+                default:
+                    throw new ApiError(400, 'Invalid role');
+            }
+    
+            // Commit the transaction
+            await session.commitTransaction();
+            return this.getMe(id);  // Return the updated user
+    
+        } catch (error) {
+            if (session) {
+                await session.abortTransaction(); // Rollback transaction if something goes wrong
+            }
+            console.error(error);
+            throw error;
+        } finally {
+            if (session) {
+                session.endSession(); // Close session
+            }
+        }
+    }
+    
+
+    /**
+     * Converts a user (e.g., an employee) to another type (e.g., applicant)
+     * @param {string} currentType - The current user type (e.g., 'employee')
+     * @param {string} userId - The user ID to be converted
+     * @param {object} args - Any additional arguments needed for conversion
+     * @returns {object} - The newly created user of the target type
+     */
+    async convert(role, userId) {
+        let user;
+        let applications;
+        let newUser;
+        role = role.toLowerCase();
+
+        if (role === 'employee') {
+            // Step 1: Find the user based on the current type
+            user = await Employee.findById(userId);
+            if (!user) {
+                throw new ApiError(404, 'Employee not found');
+            }
+
+
+            const jobController = new JobController();
+            applications = await jobController.getApplicationsByApplicant(userId);
+            const application = applications[0];
+
+            // Step 2: Prepare the data for the applicant
+
+            // const employmentHistory = new EmploymentHistory({
+            //     _id: user._id,
+            //     company: user.company,
+            //     department: user.department,
+            //     jobTitle: user.jobTitle,
+            //     hireDate: user.hireDate,
+            //     personalEmail: user.personalEmail,
+            //     salary: user.salary,
+            //     terminationDate: user.terminationDate,
+            //     address: user.address,
+            //     phone: user.phone,
+            //     profilePicture: user.profilePicture,
+            // });
+
+            // await employmentHistory.save();
+
+            const employmentHistory = {
+                _id: user._id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                company: user.company,
+                department: user.department,
+                jobTitle: user.jobTitle,
+                hireDate: user.hireDate,
+                personalEmail: user.personalEmail,
+                salary: user.salary,
+                terminationDate: user.terminationDate,
+                address: user.address,
+                phone: user.phone,
+                profilePicture: user.profilePicture,
+            }
+            console.log(employmentHistory);
+            await EmploymentHistory.findByIdAndUpdate(user._id, employmentHistory, { upsert: true, new: true });
+
+            const applicantData = {
+                _id: user._id, // Retain the same _id
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email,
+                password: user.password, // Ensure the hashed password is retained
+                gender: user.gender,
+                resume: application.resume,
+                profilePicture: user.profilePicture,
+                // Add additional fields if necessary
+            };
+
+            // Step 3: Delete the employee record
+            await Employee.findByIdAndDelete(userId); // Delete or update as per your logic
+
+            // Step 4: Create a new applicant while retaining the same _id
+            newUser = await Applicant.create(applicantData);
+        } else {
+            throw new ApiError(400, `Unsupported user type: ${role}`);
         }
 
-        return this.getMe(id);
+        // Step 5: Return the newly created applicant
+        return newUser;
     }
 }
 

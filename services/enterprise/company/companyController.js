@@ -3,8 +3,11 @@ import Department from '../../../models/enterprise/company/department.js';
 import ApiError from '../../../util/ApiError.js';
 import UserFactory from '../../users/userFactory.js';
 import AuthController from '../../auth/authController.js';
+import EmployeeCollection from '../employee/employeeCollection.js';
+import EmployeeIterator from '../employee/employeeIterator.js';
 import dayjs from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween.js';
+import EmploymentHistory from '../../../models/users/employmentHistory.js';
 dayjs.extend(isBetween);
 
 class CompanyController {
@@ -230,6 +233,65 @@ class CompanyController {
             totalEmployeesBeginning,
             totalEmployeesEnd,
         };
+    }
+  
+    //Employee Iterator part
+    async getEmployeeCollection(companyId) {
+        return await EmployeeCollection.createCollection(companyId);
+    }
+
+    async getEmployeesByDepartment(departmentId) {
+        const collection = await this.getEmployeeCollection();
+        const iterator = collection.getDepartmentEmployeesIterator(departmentId);
+        const employees = [];
+        
+        while (iterator.hasNext()) {
+            employees.push(iterator.next());
+        }
+        
+        return employees;
+    }
+
+    async getEmployeesByJobTitle(companyId, jobTitle) {
+        const collection = await this.getEmployeeCollection(companyId);
+        const iterator = collection.getJobTitleIterator(jobTitle);
+        const employees = [];
+        
+        while (iterator.hasNext()) {
+            employees.push(iterator.next());
+        }
+        
+        return employees;
+    }
+
+    async getEmployeesBySalaryRange(companyId, minSalary, maxSalary) {
+        const collection = await this.getEmployeeCollection(companyId);
+        const iterator = collection.getSalaryRangeIterator(minSalary, maxSalary);
+        const employees = [];
+        
+        while (iterator.hasNext()) {
+            employees.push(iterator.next());
+        }
+        
+        return employees;
+    }
+
+    async getRecentlyTerminatedEmployees(companyId, withinDays) {
+        const collection = await this.getEmployeeCollection(companyId);
+        const iterator = collection.getTerminatedEmployeesIterator(withinDays);
+        const employees = [];
+        
+        while (iterator.hasNext()) {
+            employees.push(iterator.next());
+        }
+        
+        return employees;
+    }
+
+    async getEmploymentHistory(){
+        const employmentHistory = await EmploymentHistory.find({});
+
+        return employmentHistory;
     }
 }
 

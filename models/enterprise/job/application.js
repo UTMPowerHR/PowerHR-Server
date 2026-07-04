@@ -9,14 +9,18 @@ const applicationSchema = mongoose.Schema({
 
     applicant: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Applicant',
+        ref: 'User',
         required: true,
+    },
+
+    resume: {
+        type: String,
     },
 
     status: {
         statusType: {
             type: String,
-            enum: ['New', 'Viewed', 'Interviewed', 'Rejected', 'Accepted', 'Withdrawn', 'Other', 'Closed', 'Deleted'],
+            enum: ['New', 'Viewed', 'Interviewed', 'Rejected', 'Accepted', 'Withdrawn', 'Other', 'Closed', 'Deleted', 'Pending'],
             default: 'New',
         },
         reason: {
@@ -86,6 +90,11 @@ const applicationSchema = mongoose.Schema({
                 type: Date,
             },
         },
+    },
+
+    reportDutyDate: {
+        type: Date,
+        required: false,  // Make it optional if it's only set for "Pending" status
     },
 });
 

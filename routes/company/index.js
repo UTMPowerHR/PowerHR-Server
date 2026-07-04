@@ -1,5 +1,6 @@
 import ApiError from '../../util/ApiError.js';
 import EnterpriseFacade from '../../services/enterprise/enterpriseFacade.js';
+import EmploymentHistory from '../../models/users/employmentHistory.js';
 
 class CompanyRoutes {
     constructor(fastify) {
@@ -187,6 +188,62 @@ class CompanyRoutes {
                 },
             },
             this.getCompanyTurnover.bind(this),
+        );
+
+        this.fastify.put(
+            '/:companyId/employees/:employeeId/convert',
+            {
+                schema: {
+                    description: 'Convert an employee to an applicant',
+                    tags: ['Company'],
+                    params: {
+                        type: 'object',
+                        properties: {
+                            companyId: { type: 'string' },
+                            employeeId: { type: 'string' },
+                        },
+                        required: ['companyId', 'employeeId'],
+                    },
+                },
+            },
+            this.convertEmployeeToApplicant.bind(this),
+        );
+
+        this.fastify.get(
+            '/employmenthistory',
+            {
+                schema: {
+                    description: 'Get employees of a company',
+                    tags: ['Company'],
+                },
+            },
+            this.getEmploymentHistory.bind(this),
+        );
+
+        this.fastify.delete(
+            '/employmenthistory/:id', 
+            {
+                schema: {
+                    description: 'Delete an employment history record',
+                    tags: ['Company'],
+                    params: {
+                        type: 'object',
+                        required: ['id'],
+                        properties: {
+                            id: { type: 'string', description: 'Employment History ID' }
+                        }
+                    },
+                    response: { 
+                        200: {
+                            type: 'object',
+                            properties: {
+                                message: { type: 'string' }
+                            }
+                        }
+                    }
+                }
+            },
+            this.deleteEmploymentHistory.bind(this)
         );
     }
 
@@ -400,6 +457,73 @@ class CompanyRoutes {
                 request.log.error(error);
                 reply.status(500).send({ error: error.message || 'Something went wrong' });
             }
+        }
+    }
+
+    async convertEmployeeToApplicant(request, reply) {
+        try {
+            const { companyId, employeeId } = request.params;
+
+            // Call the EnterpriseFacade to handle the conversion
+            const applicant = await this.enterpriseFacade.convertEmployeeToApplicant(employeeId);
+            console.log(request.body);
+            await this.enterpriseFacade.logAction(
+                request.user.id,
+                companyId,
+                'Employee converted to applicant',
+                `Employee ${employeeId} converted to applicant`,
+            );
+
+            reply.send({
+                applicant,
+                message: 'Employee converted to applicant successfully',
+            });
+        } catch (error) {
+            if (error instanceof ApiError) {
+                return reply.status(error.statusCode).send({ error: error.message });
+            } else {
+                request.log.error(error);
+                reply.status(500).send({ error: error.message || 'Something went wrong' });
+            }
+        }
+    }
+    async getEmploymentHistory(request, reply){
+        try{
+            // const employmentHistory = await this.enterpriseFacade.getEmploymentHistory();
+            const employmentHistories = await EmploymentHistory.find()
+            .populate('_id') // Select specific fields from the User collection
+            .populate('department')
+            .exec();
+            
+            return reply.send(employmentHistories);
+        } catch(error){
+            request.log.error(error);
+            reply.status(500).send({ error: error.message || 'Something went wrong' });
+        }
+    }
+    async deleteEmploymentHistory(request, reply) {
+        try {
+            const { id } = request.params;
+    
+            // Check if the employment history exists
+            const existingHistory = await EmploymentHistory.findById(id);
+            if (!existingHistory) {
+                return reply.status(404).send({ 
+                    error: 'Employment history record not found' 
+                });
+            }
+    
+            // Delete the employment history
+            await EmploymentHistory.findByIdAndDelete(id);
+    
+            return reply.send({ 
+                message: 'Employment history record deleted successfully' 
+            });
+        } catch (error) {
+            request.log.error(error);
+            return reply.status(500).send({ 
+                error: error.message || 'Something went wrong while deleting the employment history' 
+            });
         }
     }
 }
