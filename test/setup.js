@@ -1,18 +1,53 @@
+import { vi, beforeAll, afterAll, afterEach } from 'vitest';
+
+// IMPORTANT: Hoist mocks to the very top, before any other imports
+vi.mock('@sparticuz/chromium', () => ({
+    default: {
+        args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        defaultViewport: { width: 1280, height: 720 },
+        executablePath: vi.fn().mockResolvedValue('/usr/bin/chromium-browser'),
+        headless: true,
+    },
+}));
+
+vi.mock('puppeteer-core', () => ({
+    default: {
+        launch: vi.fn().mockResolvedValue({
+            newPage: vi.fn().mockResolvedValue({
+                setContent: vi.fn().mockResolvedValue(),
+                pdf: vi.fn().mockResolvedValue(Buffer.from('fake pdf content')),
+                setDefaultTimeout: vi.fn(),
+            }),
+            close: vi.fn().mockResolvedValue(),
+        }),
+    },
+}));
+
+// Now import everything else
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import fastify from 'fastify';
-import { afterAll, beforeAll, afterEach } from 'vitest';
+import ajvFormats from 'ajv-formats';
 
 dotenv.config({ path: './test/.env.test' });
 
-const app = fastify();
+const app = fastify({
+    ajv: {
+        plugins: [
+            (ajv) => {
+                ajvFormats(ajv, ['binary']);
+            },
+        ],
+    },
+});
+
 // Register the routes from your Fastify application
 app.register(import('../app.js'));
 
 let mongod;
 
-//Set up database connection before tests
+// Set up database connection before tests
 beforeAll(async () => {
     mongod = new MongoMemoryServer();
     await mongod.start();

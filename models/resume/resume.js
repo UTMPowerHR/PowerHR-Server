@@ -226,6 +226,10 @@ const resumeSchema = mongoose.Schema({
             },
         ],
     },
+    downloadableLink: {
+        type: String,
+        default: null, // Initially, no file is uploaded
+    },
 });
 
 const Resume = mongoose.model('Resume', resumeSchema);

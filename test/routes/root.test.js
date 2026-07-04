@@ -1,3 +1,9 @@
+import { vi } from 'vitest';
+
+// Mock before any other imports
+vi.mock('@sparticuz/chromium', () => ({ default: {} }));
+vi.mock('puppeteer-core', () => ({ default: {} }));
+
 import { describe, it, expect } from 'vitest';
 import app from '../setup.js';
 
@@ -7,7 +13,6 @@ describe.concurrent('routes/root.js', () => {
             method: 'GET',
             url: '/param/123',
         });
-
         expect(response.statusCode).toBe(200);
         expect(response.json()).toEqual({ id: '123' });
     });
@@ -17,7 +22,6 @@ describe.concurrent('routes/root.js', () => {
             method: 'GET',
             url: '/',
         });
-
         expect(response.statusCode).toBe(200);
         expect(response.json()).toEqual({ root: true, env: 'test' });
     });
@@ -27,7 +31,6 @@ describe.concurrent('routes/root.js', () => {
             method: 'GET',
             url: '/basic',
         });
-
         expect(response.statusCode).toBe(200);
         expect(response.json()).toEqual({ root: true });
     });
@@ -38,7 +41,6 @@ describe.concurrent('routes/root.js', () => {
             url: '/body',
             payload: { message: 'Hello' },
         });
-
         expect(response.statusCode).toBe(200);
         expect(response.json()).toEqual({ message: 'Hello' });
     });

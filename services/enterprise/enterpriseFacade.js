@@ -185,6 +185,11 @@ class EnterpriseFacade {
         return await this.jobController.getPostingListByCompanyId(companyId);
     }
 
+    // Interview scheduling
+    async scheduleInterview(applicationId, interviewData, scheduledBy) {
+        return await this.jobController.scheduleInterview(applicationId, interviewData, scheduledBy);
+    }
+
     // Log
     async logAction(user, company, action, description) {
         return await this.logController.logAction(user, company, action, description);
