@@ -7,6 +7,7 @@ export default fp(async (fastify) => {
         'https://power-hr.vercel.app',
         'https://power-hr-development.vercel.app',
         'https://power-hr-client.vercel.app',
+        'https://power-hr-client-v3.vercel.app/'
     ];
 
     if (process.env.FRONTEND_URL && !allowedOrigins.includes(process.env.FRONTEND_URL)) {
